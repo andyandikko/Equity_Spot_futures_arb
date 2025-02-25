@@ -1,47 +1,75 @@
-import pandas as pd
+"""
+Script to pull Unconstrained Five-Factor Model data from Bloomberg using xbbg.
+
+Factors:
+1. Russell 1000 Index (Equity) - Bloomberg: "RUI Index"
+2. BofA Merrill Lynch 7-10 Year U.S. Treasury Index (Fixed Income - Treasury Bonds) - Bloomberg: "BAML7-10US Index"
+3. BofA Merrill Lynch 7-10 Year BBB U.S. Corporate Index (Fixed Income - Corporate Bonds) - Bloomberg: "BAML7-10BBB Index"
+4. U.S. Dollar Index (Currency) - Bloomberg: "DXY Curncy"
+5. S&P GSCI Crude Oil Index (Commodities) - Bloomberg: "SPGSCI Index"
+
+- The time range is set in settings.py.
+- The data is saved to _data/unconstrained_5factors.csv.
+- Data is resampled to monthly frequency using the first observation of each month.
+"""
+
 from xbbg import blp
-from datetime import datetime
+import pandas as pd
+from settings import START_DATE, END_DATE, DATA_DIR
 
-# --- 1. Pull Spot/Dividend Data ---
-# Example for SPX; repeat for Nasdaq and DowJones.
-spot_div_hist = blp.bdh("SPX Index",
-                        ["PX_LAST", "INDX_EST_DVD_YLD", "INDX_GROSS_DAILY_DIV"],
-                        start_date="2023-01-01", end_date="2023-12-31")
-spot_div_hist = spot_div_hist.stack().reset_index()
-spot_div_hist.rename(columns={'level_1': 'Field', 'PX_LAST': 'Value'}, inplace=True)
-# Pivot to have one row per date with columns for each field
-spot_div_hist = spot_div_hist.pivot(index="date", columns="Field", values="Value").reset_index()
-spot_div_hist.rename(columns={
-    "PX_LAST": "Spot_Price",
-    "INDX_EST_DVD_YLD": "Div_Yield",
-    "INDX_GROSS_DAILY_DIV": "Daily_Div"
-}, inplace=True)
+def pull_factors(start_date=START_DATE, end_date=END_DATE):
+    """Fetches Unconstrained Five-Factor Model data from Bloomberg using xbbg."""
+    # Adjust the start and end dates
+    adjusted_start_date = pd.to_datetime(start_date)
+    adjusted_end_date = pd.to_datetime(end_date) + pd.DateOffset(months=1)  # Add one month for resampling
+    
+    # Define Bloomberg tickers for the factors
+    tickers = [
+        'RUI Index',           # Russell 1000 Index (Equity)
+        'BAML7-10US Index',     # BofA Merrill Lynch 7-10 Year U.S. Treasury Index
+        'BAML7-10BBB Index',    # BofA Merrill Lynch 7-10 Year BBB U.S. Corporate Index
+        'DXY Curncy',          # U.S. Dollar Index (Currency)
+        'SPGSCI Index'         # S&P GSCI Crude Oil Index (Commodities)
+    ]
+    
+    # Fetch daily closing prices (PX_LAST) from Bloomberg using xbbg
+    df = blp.bdh(
+        tickers=tickers,
+        flds='PX_LAST',
+        start_date=adjusted_start_date.strftime('%Y-%m-%d'),
+        end_date=adjusted_end_date.strftime('%Y-%m-%d')
+    )
+    
+    # The returned DataFrame has a MultiIndex for columns (ticker, field).
+    # Extract the PX_LAST data for each ticker.
+    df = df.xs('PX_LAST', axis=1, level=1)
+    
+    # Resample data to monthly frequency: use the first observation of each month.
+    df = df.resample('MS').first()
+    
+    # Rename columns for clarity
+    df.rename(columns={
+        'RUI Index': 'Russell1000',
+        'BAML7-10US Index': 'BofA_Treasury',
+        'BAML7-10BBB Index': 'BofA_Corporate',
+        'DXY Curncy': 'USD_Index',
+        'SPGSCI Index': 'GSCI_CrudeOil'
+    }, inplace=True)
+    
+    # Check for missing values and forward fill if necessary
+    if df.isnull().values.any():
+        print(df[df.isnull().any(axis=1)])
+        print("Warning: Missing values in Unconstrained Five-Factor Model data. Forward filling missing values.")
+        df.fillna(method='ffill', inplace=True)
+    
+    return df
 
-# --- 2. Pull Futures Data ---
-# For SP futures (using ES1, ES2, ES3, ES4)
-futures_fields = ["PX_LAST"]
-futures = blp.bdh(["ES1 Index", "ES2 Index", "ES3 Index", "ES4 Index"],
-                  futures_fields,
-                  start_date="2023-01-01", end_date="2023-12-31")
-futures = futures.stack().reset_index()
-futures.rename(columns={"level_1": "Contract", "PX_LAST": "Futures_Price"}, inplace=True)
+def main():
+    """Main function to pull and save Unconstrained Five-Factor Model data."""
+    df = pull_factors()
+    output_path = f"{DATA_DIR}/unconstrained_5factors.csv"
+    df.to_csv(output_path)
+    print(f"Unconstrained Five-Factor data saved to {output_path}")
 
-# --- 3. Pull USD OIS Rates ---
-ois_tickers = ["USSW1 Curncy", "USSW1M Curncy", "USSW3M Curncy", "USSW6M Curncy", "USSW1Y Curncy"]
-ois_hist = blp.bdh(ois_tickers, "PX_LAST", start_date="2023-01-01", end_date="2023-12-31")
-ois_hist = ois_hist.stack().reset_index()
-ois_hist.rename(columns={'level_1': 'OIS_Tenor', 'PX_LAST': 'OIS_Rate'}, inplace=True)
-ois_wide = ois_hist.pivot(index="date", columns="OIS_Tenor", values="OIS_Rate").reset_index()
-
-# --- 4. Save Raw Data to Excel (if needed) ---
-with pd.ExcelWriter("input/equity_spot_futures.xlsx") as writer:
-    spot_div_hist.to_excel(writer, sheet_name="SP", index=False)
-    # (Repeat for Nasdaq and DowJones if required)
-    # Futures data can be saved in separate sheets:
-    futures.to_excel(writer, sheet_name="SP_Futures", index=False)
-    ois_wide.to_excel(writer, sheet_name="USD_OIS_Rates", index=False)
-
-# The above Excel file now replicates the raw data structure pulled manually via the Excel add‑in.
-# From here, you can run the Python processing scripts provided earlier which mimic the Stata code.
-
-print("Raw data pulled via xbbg and saved to Excel.")
+if __name__ == "__main__":
+    main()
