@@ -1,0 +1,47 @@
+import pandas as pd
+from xbbg import blp
+from datetime import datetime
+
+# --- 1. Pull Spot/Dividend Data ---
+# Example for SPX; repeat for Nasdaq and DowJones.
+spot_div_hist = blp.bdh("SPX Index",
+                        ["PX_LAST", "INDX_EST_DVD_YLD", "INDX_GROSS_DAILY_DIV"],
+                        start_date="2023-01-01", end_date="2023-12-31")
+spot_div_hist = spot_div_hist.stack().reset_index()
+spot_div_hist.rename(columns={'level_1': 'Field', 'PX_LAST': 'Value'}, inplace=True)
+# Pivot to have one row per date with columns for each field
+spot_div_hist = spot_div_hist.pivot(index="date", columns="Field", values="Value").reset_index()
+spot_div_hist.rename(columns={
+    "PX_LAST": "Spot_Price",
+    "INDX_EST_DVD_YLD": "Div_Yield",
+    "INDX_GROSS_DAILY_DIV": "Daily_Div"
+}, inplace=True)
+
+# --- 2. Pull Futures Data ---
+# For SP futures (using ES1, ES2, ES3, ES4)
+futures_fields = ["PX_LAST"]
+futures = blp.bdh(["ES1 Index", "ES2 Index", "ES3 Index", "ES4 Index"],
+                  futures_fields,
+                  start_date="2023-01-01", end_date="2023-12-31")
+futures = futures.stack().reset_index()
+futures.rename(columns={"level_1": "Contract", "PX_LAST": "Futures_Price"}, inplace=True)
+
+# --- 3. Pull USD OIS Rates ---
+ois_tickers = ["USSW1 Curncy", "USSW1M Curncy", "USSW3M Curncy", "USSW6M Curncy", "USSW1Y Curncy"]
+ois_hist = blp.bdh(ois_tickers, "PX_LAST", start_date="2023-01-01", end_date="2023-12-31")
+ois_hist = ois_hist.stack().reset_index()
+ois_hist.rename(columns={'level_1': 'OIS_Tenor', 'PX_LAST': 'OIS_Rate'}, inplace=True)
+ois_wide = ois_hist.pivot(index="date", columns="OIS_Tenor", values="OIS_Rate").reset_index()
+
+# --- 4. Save Raw Data to Excel (if needed) ---
+with pd.ExcelWriter("input/equity_spot_futures.xlsx") as writer:
+    spot_div_hist.to_excel(writer, sheet_name="SP", index=False)
+    # (Repeat for Nasdaq and DowJones if required)
+    # Futures data can be saved in separate sheets:
+    futures.to_excel(writer, sheet_name="SP_Futures", index=False)
+    ois_wide.to_excel(writer, sheet_name="USD_OIS_Rates", index=False)
+
+# The above Excel file now replicates the raw data structure pulled manually via the Excel add‑in.
+# From here, you can run the Python processing scripts provided earlier which mimic the Stata code.
+
+print("Raw data pulled via xbbg and saved to Excel.")
