@@ -62,5 +62,6 @@ dependencies:
   - pip
   # Fallback to PyPI for wrds installation if not available on conda-forge.
   - pip:
-      - wrds==3.* # Specify the version if needed; otherwise, use just 'wrds'
+      - wrds # Specify the version if needed; otherwise, use just 'wrds'
+      - blpapi --extra-index-url=https://blpapi.bloomberg.com/repository/releases/python/simple/
   
