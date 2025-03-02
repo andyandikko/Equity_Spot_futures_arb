@@ -253,13 +253,8 @@ def main():
             INPUT_FILE = DATA_MANUAL / "bloomberg_historical_data.parquet"
             raw_data = pd.read_parquet(INPUT_FILE)
         logger.info(f"Loading raw data from {INPUT_FILE}")
-        # Load the raw multi-index data; it is assumed that the index is Date.
-        
-        # Ensure the DataFrame index is a DatetimeIndex
         if not isinstance(raw_data.index, pd.DatetimeIndex):
             raw_data.index = pd.to_datetime(raw_data.index)
-        
-        # Define indices and their corresponding futures codes
         indices = {
             'SPX': ['ES1', 'ES2', 'ES3', 'ES4'],
             'NDX': ['NQ1', 'NQ2', 'NQ3', 'NQ4'],
@@ -280,5 +275,9 @@ def main():
         logger.error(f"Error in main: {e}")
         raise
 
+
 if __name__ == "__main__":
     main()
+
+
+
