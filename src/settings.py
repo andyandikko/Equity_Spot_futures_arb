@@ -78,8 +78,11 @@ d["USING_XBBG"] = _config("USING_XBBG", default=False, cast=bool)
 ## Paths
 d["DATA_DIR"] = if_relative_make_abs(_config('DATA_DIR', default=Path('_data'), cast=Path))
 d["MANUAL_DATA_DIR"] = if_relative_make_abs(_config('MANUAL_DATA_DIR', default=Path('data_manual'), cast=Path))
+d["INPUT_DIR"] = if_relative_make_abs(_config('INPUT_DIR', default=Path('_data/input'), cast=Path))
+d["PROCESSED_DIR"] = if_relative_make_abs(_config('PROCESSED_DIR', default=Path('_data/processed'), cast=Path))
 d["OUTPUT_DIR"] = if_relative_make_abs(_config('OUTPUT_DIR', default=Path('_output'), cast=Path))
 d["PUBLISH_DIR"] = if_relative_make_abs(_config('PUBLISH_DIR', default=Path('_output/publish'), cast=Path))
+d["TEMP_DIR"] = if_relative_make_abs(_config('TEMP_DIR', default=Path('_output/temp'), cast=Path))
 # fmt: on
 
 ## Name of Stata Executable in path
@@ -120,6 +123,10 @@ def create_dirs():
     ## If they don't exist, create the _data and _output directories
     d["DATA_DIR"].mkdir(parents=True, exist_ok=True)
     d["OUTPUT_DIR"].mkdir(parents=True, exist_ok=True)
+    d["TEMP_DIR"].mkdir(parents=True, exist_ok=True)
+    d["INPUT_DIR"].mkdir(parents=True, exist_ok=True)
+    d["PUBLISH_DIR"].mkdir(parents=True, exist_ok=True)
+    d["PROCESSED_DIR"].mkdir(parents=True, exist_ok=True)
     # (d["BASE_DIR"] / "_docs").mkdir(parents=True, exist_ok=True)
 
 

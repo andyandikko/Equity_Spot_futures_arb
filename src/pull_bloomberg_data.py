@@ -31,7 +31,8 @@ DATA_DIR = config("DATA_DIR")
 OUTPUT_DIR = config("OUTPUT_DIR")
 START_DATE = config("START_DATE")
 END_DATE = config("END_DATE")
-
+TEMP_DIR = config("TEMP_DIR")
+INPUT_DIR = config("INPUT_DIR")
 # Setup Bloomberg access (requires xbbg and Bloomberg Terminal)
 if USING_XBBG:
     from xbbg import blp
@@ -42,7 +43,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('bloomberg_data_extraction.log'),
+        logging.FileHandler(TEMP_DIR / 'bloomberg_data_extraction.log'),
         logging.StreamHandler(sys.stdout)
     ]
 )
@@ -214,10 +215,9 @@ def main():
             final_df = final_df.merge(ois_df, left_index=True, right_index=True, how='outer')
             final_df.sort_index(inplace=True)
             
-            # Save the final merged DataFrame to CSV in DATA_DIR / "input"
-            output_path = Path(DATA_DIR) / "input" / "bloomberg_merged_data.csv"
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            final_df.to_csv(output_path)
+            # Save the final merged DataFrame to CSV in _data/input
+            output_path = INPUT_DIR / "bloomberg_merged_data.parquet"
+            final_df.to_parquet(output_path)
             logger.info(f"Final merged data saved to {output_path}")
             
         except Exception as e:
