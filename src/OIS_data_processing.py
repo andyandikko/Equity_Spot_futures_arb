@@ -81,19 +81,21 @@ def process_ois_data(filepath: Path) -> pd.DataFrame:
     
 
     logger.info(f"Column levels: {ois_df.columns.names}")
-    logger.info(f"Level 0 sample: {ois_df.columns.get_level_values(0)[:5].tolist()}")
+    logger.info(f"Level 0 sample: {ois_df.columns.get_level_values(0).tolist()}")
 
     # Ensure all required OIS columns are present
     missing_cols = [col for col in OIS_TENORS.values() if col not in ois_df.columns.get_level_values(0)]
     if missing_cols:
         raise ValueError(f"Missing required OIS columns: {missing_cols}")
 
-    # Sort MultiIndex for structured slicing
-    ois_df = ois_df.sort_index(axis=1)
-
     # Select only relevant OIS columns (matching the PX_LAST field)
     try:
-        ois_df = ois_df.loc[:, (slice("USSO1Z CMPN Curncy", "USSO30 CMPN Curncy"), 'PX_LAST')]
+        ois_df = ois_df.loc[:, (("USSO1Z CMPN Curncy", 
+                                 "USSO1 CMPN Curncy",
+                                 "USSO3 CMPN Curncy",
+                                 "USSOF CMPN Curncy",
+                                 "USSO10 CMPN Curncy"
+                                 ), 'PX_LAST')]
     except KeyError as e:
         logger.error(f"Error selecting OIS columns: {e}")
         raise
@@ -102,19 +104,29 @@ def process_ois_data(filepath: Path) -> pd.DataFrame:
     ois_df.columns = ois_df.columns.get_level_values(0)
     rename_dict = {v: k for k, v in OIS_TENORS.items()}
     ois_df = ois_df.rename(columns=rename_dict)
-
+    logger.info(f"Renamed OIS columns: {ois_df.columns}")
     # Convert OIS rates to decimal format (if they are in percentage format)
     for col in OIS_TENORS.keys():
+        logger.info(f"Checking if {col} is in percentage format")
         if col in ois_df.columns:
-            max_value = ois_df[col].max()
-            if max_value > 10:  # Check if the values are in percentage (e.g., 4.5 instead of 0.045)
-                logger.info(f"Converting {col} from percentage to decimal format")
-                ois_df[col] = ois_df[col] / 100
+            logger.info(f"Converting {col} from percentage to decimal format")
+            ois_df[col] = ois_df[col] / 100
 
 
     output_path = Path(PROCESSED_DIR) / "cleaned_ois_rates.csv"
     ois_df.to_csv(output_path, index=True)
     logger.info(f"Saved cleaned OIS rates to {output_path}")
+    # **LOG METADATA AFTER SAVING**
+    logger.info("\n========== OIS Data Summary ==========")
+    # Log basic shape of the dataset
+    logger.info(f"Shape of dataset: {ois_df.shape} (rows, columns)")
+    # Log number of missing values per column
+    missing_summary = ois_df.isna().sum()
+    logger.info(f"Missing values per column:\n{missing_summary.to_string()}")
+    # Log basic descriptive statistics
+    logger.info("Descriptive statistics:\n%s", ois_df.describe().to_string())
+    # Log first few rows of dataset
+    logger.info("First 5 rows of cleaned OIS data:\n%s", ois_df.head().to_string())
 
     return ois_df
 
