@@ -26,7 +26,7 @@ sys.path.insert(1, "./src")
 from settings import config
 
 # Load configuration values
-USING_XBBG = config("USING_XBBG")
+USING_XBBG = True # config("USING_XBBG")
 DATA_DIR = config("DATA_DIR")
 OUTPUT_DIR = config("OUTPUT_DIR")
 START_DATE = config("START_DATE")
@@ -104,7 +104,9 @@ def pull_spot_div_data(tickers, start_date, end_date):
         logger.info(f"Extracting spot/dividend data for {tickers}")
         fields = ["PX_LAST", "IDX_EST_DVD_YLD", "INDX_GROSS_DAILY_DIV"]
         df = blp.bdh(tickers, fields, start_date=start_date, end_date=end_date)
+        logger.info(f"Data for {tickers}: {df.head(20).to_string()}")
         df = df.reset_index()  # Ensure Date is a column
+        df.rename(index={0:"Date"})
         logger.info(f"Successfully extracted spot data with {len(df)} rows for {tickers}")
         return df
     except Exception as e:
@@ -132,6 +134,7 @@ def pull_futures_data(tickers, start_date, end_date):
         logger.info(f"Extracting futures data for tickers: {tickers}")
         fields = ["PX_LAST", "PX_VOLUME", "OPEN_INT", "CURRENT_CONTRACT_MONTH_YR"]
         df = blp.bdh(tickers, fields, start_date=start_date, end_date=end_date)
+        logger.info(f"Data for {tickers}: {df.head(20).to_string()}")
         df = df.reset_index()
         df.rename(columns={'index': 'Date'}, inplace=True)
         logger.info(f"Successfully extracted futures data with {len(df)} rows")
@@ -162,6 +165,7 @@ def pull_ois_rates(tickers, start_date, end_date):
         logger.info(f"Extracting OIS data for tickers: {tickers}")
         fields = ["PX_LAST"]
         ois_df = blp.bdh(tickers, fields, start_date=start_date, end_date=end_date)
+        logger.info(f"Data for {tickers}: {ois_df.head(20).to_string()}")
         ois_df = ois_df.reset_index()
         ois_df.rename(columns={'index': 'Date'}, inplace=True)
         ois_df.set_index('Date', inplace=True)
@@ -216,7 +220,7 @@ def main():
             final_df.sort_index(inplace=True)
             
             # Save the final merged DataFrame to CSV in _data/input
-            output_path = INPUT_DIR / "bloomberg_merged_data.parquet"
+            output_path = INPUT_DIR / "bloomberg_historical_data.parquet"
             final_df.to_parquet(output_path)
             logger.info(f"Final merged data saved to {output_path}")
             
