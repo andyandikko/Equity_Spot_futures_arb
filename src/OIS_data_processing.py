@@ -18,8 +18,7 @@ INPUT_DIR = config("INPUT_DIR")
 PROCESSED_DIR = config("PROCESSED_DIR")
 DATA_MANUAL = config("MANUAL_DATA_DIR")
 
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-log_file = Path(TEMP_DIR) / f'ois_processing_{timestamp}.log'
+log_file = Path(TEMP_DIR) / f'ois_processing.log'
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',

@@ -144,6 +144,80 @@ def task_pull_bloomberg():
         # to clean and forget the cheaper tasks.
     }
 
+def task_process_futures_data():
+    """
+    Process futures data for indices after pulling the latest data.
+    """
+    file_dep = [
+        "./src/settings.py",
+        "./src/pull_bloomberg_data.py",
+        "./src/futures_data_processing.py"
+    ]
+    targets = [
+        PROCESSED_DIR / "all_indices_calendar_spreads.csv",
+        PROCESSED_DIR / "INDU_calendar_spread.csv",
+        PROCESSED_DIR / "SPX_calendar_spread.csv",
+        PROCESSED_DIR / "NDX_calendar_spread.csv",
+    ]
+
+    return {
+        "actions": [
+            "python ./src/futures_data_processing.py",
+        ],
+        "file_dep": file_dep,
+        "targets": targets,
+        "clean": True,  
+    }
+
+def task_process_ois_data():
+    """
+    Process OIS data for 3-month rates after pulling the latest Bloomberg data.
+    """
+    file_dep = [
+        "./src/settings.py",
+        "./src/pull_bloomberg_data.py",
+        "./src/OIS_data_processing.py"
+    ]
+    targets = [
+        PROCESSED_DIR / "cleaned_ois_rates.csv"
+    ]
+
+    return {
+        "actions": [
+            "python ./src/OIS_data_processing.py",
+        ],
+        "file_dep": file_dep,
+        "targets": targets,
+        "clean": True,  # Add appropriate clean actions if necessary
+    }
+
+def task_process_futures_data():
+    """
+    Process futures data for SPX, NDX, and INDU indices using the Bloomberg dataset.
+    This task depends on pulling Bloomberg data and potentially processing OIS data.
+    """
+    file_dep = [
+        "./src/settings.py",
+        "./src/pull_bloomberg_data.py",
+        "./src/OIS_data_processing.py",  # If the futures processing depends on OIS data
+        "./src/futures_data_processing.py"
+    ]
+    targets = [
+        PROCESSED_DIR / "all_indices_calendar_spreads.csv",
+        PROCESSED_DIR / "SPX_calendar_spread.csv",
+        PROCESSED_DIR / "NDX_calendar_spread.csv",
+        PROCESSED_DIR / "INDU_calendar_spread.csv",
+        OUTPUT_DIR / "all_indices_spread.png"
+    ]
+
+    return {
+        "actions": [
+            "python ./src/futures_data_processing.py",
+        ],
+        "file_dep": file_dep,
+        "targets": targets,
+        "clean": True,  # Define the clean behavior appropriately if necessary
+    }
 
 
 notebook_tasks = {

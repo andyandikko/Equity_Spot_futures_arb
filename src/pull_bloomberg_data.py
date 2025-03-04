@@ -50,53 +50,72 @@ INDEX_CONFIG = {
     }
 }
 
-def pull_data(tickers, fields, start_date, end_date):
-    """
-    Generic function to pull data from Bloomberg using xbbg.
-    """
+OIS_TICKERS = {
+    "OIS_1W": "USSO1Z CMPN Curncy",
+    "OIS_1M": "USSO1 CMPN Curncy",
+    "OIS_3M": "USSOC CMPN Curncy",
+    "OIS_6M": "USSOF CMPN Curncy",
+    "OIS_1Y": "USSO10 CMPN Curncy"
+}
+
+def pull_spot_div_data(tickers, start_date, end_date):
     try:
-        logger.info(f"Extracting data for {tickers}")
+        logger.info(f"Extracting spot/dividend data for {tickers}")
+        fields = ["PX_LAST", "IDX_EST_DVD_YLD", "INDX_GROSS_DAILY_DIV"]
         df = blp.bdh(tickers, fields, start_date=start_date, end_date=end_date)
-        df.index = pd.to_datetime(df.index)  # Ensure index is datetime
-        logger.info(f"Successfully extracted data with {len(df)} rows for {tickers}")
+        df.index = pd.to_datetime(df.index)
         return df
     except Exception as e:
-        logger.error(f"Error pulling data for {tickers}: {e}")
+        logger.error(f"Error pulling spot data for {tickers}: {e}")
+        return pd.DataFrame()
+
+def pull_futures_data(tickers, start_date, end_date):
+    try:
+        logger.info(f"Extracting futures data for {tickers}")
+        fields = ["PX_LAST", "PX_VOLUME", "OPEN_INT", "CURRENT_CONTRACT_MONTH_YR"]
+        df = blp.bdh(tickers, fields, start_date=start_date, end_date=end_date)
+        df.index = pd.to_datetime(df.index)
+        return df
+    except Exception as e:
+        logger.error(f"Error pulling futures data for {tickers}: {e}")
+        return pd.DataFrame()
+
+def pull_ois_rates(tickers, start_date, end_date):
+    try:
+        logger.info(f"Extracting OIS rates for {tickers}")
+        fields = ["PX_LAST"]
+        df = blp.bdh(tickers, fields, start_date=start_date, end_date=end_date)
+        df.index = pd.to_datetime(df.index)
+        return df
+    except Exception as e:
+        logger.error(f"Error pulling OIS rates: {e}")
         return pd.DataFrame()
 
 def main():
-    """
-    Main function to extract and merge Bloomberg data.
-    """
     if USING_XBBG:
         try:
             logger.info(f"Pulling data from {START_DATE} to {END_DATE}")
 
             spot_dfs, futures_dfs = [], []
-            
             for index_name, cfg in INDEX_CONFIG.items():
-                spot_tickers = [cfg["spot_ticker"]]
-                spot_df = pull_data(spot_tickers, ["PX_LAST", "IDX_EST_DVD_YLD", "INDX_GROSS_DAILY_DIV"], START_DATE, END_DATE)
+                spot_df = pull_spot_div_data([cfg["spot_ticker"]], START_DATE, END_DATE)
+                futures_df = pull_futures_data(cfg["futures_tickers"], START_DATE, END_DATE)
                 spot_dfs.append(spot_df)
-                
-                futures_df = pull_data(cfg["futures_tickers"], ["PX_LAST", "PX_VOLUME", "OPEN_INT", "CURRENT_CONTRACT_MONTH_YR"], START_DATE, END_DATE)
                 futures_dfs.append(futures_df)
 
-            # Merge all spot data
             all_spot = pd.concat(spot_dfs, axis=1) if spot_dfs else pd.DataFrame()
             all_futures = pd.concat(futures_dfs, axis=1) if futures_dfs else pd.DataFrame()
 
-            # Final merge
+            ois_df = pull_ois_rates(list(OIS_TICKERS.values()), START_DATE, END_DATE)
+
             final_df = all_spot.join(all_futures, how='outer') if not all_spot.empty else all_futures
+            final_df = final_df.join(ois_df, how='outer') if not final_df.empty else ois_df
             final_df.sort_index(inplace=True)
             
-            # Save output
             INPUT_DIR.mkdir(parents=True, exist_ok=True)
             output_path = INPUT_DIR / "bloomberg_historical_data.parquet"
             final_df.to_parquet(output_path)
             logger.info(f"Final merged data saved to {output_path}")
-            logger.info(f"Merged data: {final_df.head(20).to_string()}")
-        
         except Exception as e:
             logger.error(f"Error extracting Bloomberg data: {e}")
             import traceback
@@ -107,5 +126,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
