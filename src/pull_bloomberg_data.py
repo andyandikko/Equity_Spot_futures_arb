@@ -97,7 +97,7 @@ def pull_spot_div_data(tickers, start_date, end_date):
         end_date (str): End date in 'YYYY-MM-DD' format.
         
     Returns:
-        pandas.DataFrame: DataFrame with Date as a column and MultiIndex columns
+        pandas.DataFrame: DataFrame with Date as index and MultiIndex columns
                           for each field (e.g., PX_LAST, IDX_EST_DVD_YLD, INDX_GROSS_DAILY_DIV).
     """
     try:
@@ -105,15 +105,14 @@ def pull_spot_div_data(tickers, start_date, end_date):
         fields = ["PX_LAST", "IDX_EST_DVD_YLD", "INDX_GROSS_DAILY_DIV"]
         df = blp.bdh(tickers, fields, start_date=start_date, end_date=end_date)
         logger.info(f"Data for {tickers}: {df.head(20).to_string()}")
-        df = df.reset_index()  # Ensure Date is a column
-        df.rename(index={0:"Date"})
+        
+        # The index from bdh is already the date, no need to reset_index or rename
         logger.info(f"Successfully extracted spot data with {len(df)} rows for {tickers}")
         return df
     except Exception as e:
         logger.error(f"Error pulling spot data for {tickers}: {e}")
         empty_df = pd.DataFrame(columns=pd.MultiIndex.from_product([tickers, fields]))
-        empty_df['Date'] = pd.DatetimeIndex([])
-        empty_df.set_index('Date', inplace=True)
+        empty_df.index = pd.DatetimeIndex([])
         return empty_df
 
 
@@ -127,7 +126,7 @@ def pull_futures_data(tickers, start_date, end_date):
         end_date (str): End date in 'YYYY-MM-DD' format.
         
     Returns:
-        pandas.DataFrame: DataFrame with Date as a column and MultiIndex columns 
+        pandas.DataFrame: DataFrame with Date as index and MultiIndex columns 
                           (ticker, field) for each futures contract.
     """
     try:
@@ -135,15 +134,14 @@ def pull_futures_data(tickers, start_date, end_date):
         fields = ["PX_LAST", "PX_VOLUME", "OPEN_INT", "CURRENT_CONTRACT_MONTH_YR"]
         df = blp.bdh(tickers, fields, start_date=start_date, end_date=end_date)
         logger.info(f"Data for {tickers}: {df.head(20).to_string()}")
-        df = df.reset_index()
-        df.rename(columns={'index': 'Date'}, inplace=True)
+        
+        # The index from bdh is already the date, no need to reset_index or rename
         logger.info(f"Successfully extracted futures data with {len(df)} rows")
         return df
     except Exception as e:
         logger.error(f"Error pulling futures data for tickers {tickers}: {e}")
         empty_df = pd.DataFrame(columns=pd.MultiIndex.from_product([tickers, fields]))
-        empty_df['Date'] = pd.DatetimeIndex([])
-        empty_df.set_index('Date', inplace=True)
+        empty_df.index = pd.DatetimeIndex([])
         return empty_df
 
 
@@ -166,13 +164,12 @@ def pull_ois_rates(tickers, start_date, end_date):
         fields = ["PX_LAST"]
         ois_df = blp.bdh(tickers, fields, start_date=start_date, end_date=end_date)
         logger.info(f"Data for {tickers}: {ois_df.head(20).to_string()}")
-        ois_df = ois_df.reset_index()
-        ois_df.rename(columns={'index': 'Date'}, inplace=True)
-        ois_df.set_index('Date', inplace=True)
         
-        # Reformat columns into a MultiIndex (ticker, 'PX_LAST')
-        new_cols = [(col, 'PX_LAST') for col in ois_df.columns]
-        ois_df.columns = pd.MultiIndex.from_tuples(new_cols)
+        # The data from bdh already has Date as the index
+        # Reformat columns into a MultiIndex if needed
+        if not isinstance(ois_df.columns, pd.MultiIndex):
+            new_cols = [(col, 'PX_LAST') for col in ois_df.columns]
+            ois_df.columns = pd.MultiIndex.from_tuples(new_cols)
         
         logger.info(f"Successfully extracted OIS data with {len(ois_df)} rows")
         return ois_df
@@ -200,37 +197,63 @@ def main():
                 if isinstance(spot_tickers, str):
                     spot_tickers = [spot_tickers]
                 spot_df = pull_spot_div_data(spot_tickers, START_DATE, END_DATE)
-                spot_df.set_index("Date", inplace=True)
+                # Data from bdh already has Date as the index, no need to set it
                 spot_dfs.append(spot_df)
                 
                 logger.info(f"Processing {index_name} futures data")
                 fut_df = pull_futures_data(cfg["futures_tickers"], START_DATE, END_DATE)
-                fut_df.set_index("Date", inplace=True)
+                # Data from bdh already has Date as the index, no need to set it
                 futures_dfs.append(fut_df)
-            all_spot = spot_dfs[0]
-            for df in spot_dfs[1:]:
-                all_spot = all_spot.merge(df, left_index=True, right_index=True, how='outer')
-            all_futures = futures_dfs[0]
-            for df in futures_dfs[1:]:
-                all_futures = all_futures.merge(df, left_index=True, right_index=True, how='outer')
+
+            # Merge all spot dataframes
+            if spot_dfs:
+                all_spot = spot_dfs[0]
+                for df in spot_dfs[1:]:
+                    all_spot = all_spot.join(df, how='outer')
+            else:
+                all_spot = pd.DataFrame()
+            
+            # Merge all futures dataframes
+            if futures_dfs:
+                all_futures = futures_dfs[0]
+                for df in futures_dfs[1:]:
+                    all_futures = all_futures.join(df, how='outer')
+            else:
+                all_futures = pd.DataFrame()
+            
+            # Pull OIS data
             ois_ticker_list = list(OIS_TICKERS.values())
             ois_df = pull_ois_rates(ois_ticker_list, START_DATE, END_DATE)
-            final_df = all_spot.merge(all_futures, left_index=True, right_index=True, how='outer')
-            final_df = final_df.merge(ois_df, left_index=True, right_index=True, how='outer')
+            
+            # Merge all dataframes
+            if not all_spot.empty:
+                final_df = all_spot
+                if not all_futures.empty:
+                    final_df = final_df.join(all_futures, how='outer')
+                final_df = final_df.join(ois_df, how='outer')
+            elif not all_futures.empty:
+                final_df = all_futures
+                final_df = final_df.join(ois_df, how='outer')
+            else:
+                final_df = ois_df
+            
             final_df.sort_index(inplace=True)
             
-            # Save the final merged DataFrame to CSV in _data/input
+            # Create the output directory if it doesn't exist
+            INPUT_DIR.mkdir(parents=True, exist_ok=True)
+            
+            # Save the final merged DataFrame to parquet in _data/input
             output_path = INPUT_DIR / "bloomberg_historical_data.parquet"
             final_df.to_parquet(output_path)
             logger.info(f"Final merged data saved to {output_path}")
             
         except Exception as e:
             logger.error(f"Error extracting Bloomberg data: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             sys.exit(1)
     else:
         logger.warning("Defaulting to cached data. Set USING_XBBG=True in settings.py to pull fresh data.")
 
 if __name__ == "__main__":
     main()
-
-
