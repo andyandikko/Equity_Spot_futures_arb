@@ -1,18 +1,3 @@
-"""
-Bloomberg Data Extraction Script
---------------------------------
-This script extracts equity index data from Bloomberg (spot, dividends, futures)
-and USD OIS rates data, then merges them into a single multi-index timeseries DataFrame.
-The final merged data is saved to a CSV file in the "input" folder under DATA_DIR.
-
-Dependencies:
-- pandas
-- numpy
-- xbbg
-- logging
-- pathlib
-"""
-
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -26,13 +11,14 @@ sys.path.insert(1, "./src")
 from settings import config
 
 # Load configuration values
-USING_XBBG = True # config("USING_XBBG")
+USING_XBBG = True  # config("USING_XBBG")
 DATA_DIR = config("DATA_DIR")
 OUTPUT_DIR = config("OUTPUT_DIR")
 START_DATE = config("START_DATE")
 END_DATE = config("END_DATE")
 TEMP_DIR = config("TEMP_DIR")
 INPUT_DIR = config("INPUT_DIR")
+
 # Setup Bloomberg access (requires xbbg and Bloomberg Terminal)
 if USING_XBBG:
     from xbbg import blp
@@ -64,189 +50,52 @@ INDEX_CONFIG = {
     }
 }
 
-OIS_TICKERS = {
-    # Short tenors
-    "OIS_1W": "USSO1Z CMPN Curncy",  # 1 Week
-    "OIS_2W": "USSOA CMPN Curncy",    # 2 Weeks
-    "OIS_3W": "USSOB CMPN Curncy",    # 3 Weeks
-    "OIS_1M": "USSO1 CMPN Curncy",     # 1 Month
-    "OIS_2M": "USSO2 CMPN Curncy",     # 2 Months
-    "OIS_3M": "USSO3 CMPN Curncy",     # 3 Months
-    "OIS_4M": "USSO4 CMPN Curncy",     # 4 Months
-    "OIS_5M": "USSO5 CMPN Curncy",     # 5 Months
-    "OIS_6M": "USSOF CMPN Curncy",     # 6 Months (F for Forward)
-    
-    # Medium tenors
-    "OIS_7M": "USSO7 CMPN Curncy",     # 7 Months
-    "OIS_1Y": "USSO10 CMPN Curncy",    # 1 Year
-    
-    # Long tenors
-    "OIS_15M": "USSO15 CMPN Curncy",   # 15 Months
-    "OIS_20M": "USSO20 CMPN Curncy",   # 20 Months
-    "OIS_30M": "USSO30 CMPN Curncy"    # 30 Months
-}
-
-
-def pull_spot_div_data(tickers, start_date, end_date):
+def pull_data(tickers, fields, start_date, end_date):
     """
-    Pulls spot price and dividend data for an index from Bloomberg.
-    
-    Args:
-        tickers (list): List of Bloomberg tickers for the index (e.g., ["SPX Index"]).
-        start_date (str): Start date in 'YYYY-MM-DD' format.
-        end_date (str): End date in 'YYYY-MM-DD' format.
-        
-    Returns:
-        pandas.DataFrame: DataFrame with Date as index and MultiIndex columns
-                          for each field (e.g., PX_LAST, IDX_EST_DVD_YLD, INDX_GROSS_DAILY_DIV).
+    Generic function to pull data from Bloomberg using xbbg.
     """
     try:
-        logger.info(f"Extracting spot/dividend data for {tickers}")
-        fields = ["PX_LAST", "IDX_EST_DVD_YLD", "INDX_GROSS_DAILY_DIV"]
+        logger.info(f"Extracting data for {tickers}")
         df = blp.bdh(tickers, fields, start_date=start_date, end_date=end_date)
-        logger.info(f"Data for {tickers}: {df.head(20).to_string()}")
-        
-        # The index from bdh is already the date, no need to reset_index or rename
-        logger.info(f"Successfully extracted spot data with {len(df)} rows for {tickers}")
+        df.index = pd.to_datetime(df.index)  # Ensure index is datetime
+        logger.info(f"Successfully extracted data with {len(df)} rows for {tickers}")
         return df
     except Exception as e:
-        logger.error(f"Error pulling spot data for {tickers}: {e}")
-        empty_df = pd.DataFrame(columns=pd.MultiIndex.from_product([tickers, fields]))
-        empty_df.index = pd.DatetimeIndex([])
-        return empty_df
-
-
-def pull_futures_data(tickers, start_date, end_date):
-    """
-    Pulls futures data for an index from Bloomberg.
-    
-    Args:
-        tickers (list): List of Bloomberg tickers for futures contracts.
-        start_date (str): Start date in 'YYYY-MM-DD' format.
-        end_date (str): End date in 'YYYY-MM-DD' format.
-        
-    Returns:
-        pandas.DataFrame: DataFrame with Date as index and MultiIndex columns 
-                          (ticker, field) for each futures contract.
-    """
-    try:
-        logger.info(f"Extracting futures data for tickers: {tickers}")
-        fields = ["PX_LAST", "PX_VOLUME", "OPEN_INT", "CURRENT_CONTRACT_MONTH_YR"]
-        df = blp.bdh(tickers, fields, start_date=start_date, end_date=end_date)
-        logger.info(f"Data for {tickers}: {df.head(20).to_string()}")
-        
-        # The index from bdh is already the date, no need to reset_index or rename
-        logger.info(f"Successfully extracted futures data with {len(df)} rows")
-        return df
-    except Exception as e:
-        logger.error(f"Error pulling futures data for tickers {tickers}: {e}")
-        empty_df = pd.DataFrame(columns=pd.MultiIndex.from_product([tickers, fields]))
-        empty_df.index = pd.DatetimeIndex([])
-        return empty_df
-
-
-def pull_ois_rates(tickers, start_date, end_date):
-    """
-    Pulls USD OIS rates from Bloomberg and formats the result in a DataFrame with 
-    a Date index and MultiIndex columns (ticker, 'PX_LAST').
-
-    Args:
-        tickers (list): List of Bloomberg tickers for OIS rates.
-        start_date (str): Start date in 'YYYY-MM-DD' format.
-        end_date (str): End date in 'YYYY-MM-DD' format.
-        
-    Returns:
-        pandas.DataFrame: DataFrame with Date as the index and MultiIndex columns,
-                          where each ticker has a single field: 'PX_LAST'.
-    """
-    try:
-        logger.info(f"Extracting OIS data for tickers: {tickers}")
-        fields = ["PX_LAST"]
-        ois_df = blp.bdh(tickers, fields, start_date=start_date, end_date=end_date)
-        logger.info(f"Data for {tickers}: {ois_df.head(20).to_string()}")
-        
-        # The data from bdh already has Date as the index
-        # Reformat columns into a MultiIndex if needed
-        if not isinstance(ois_df.columns, pd.MultiIndex):
-            new_cols = [(col, 'PX_LAST') for col in ois_df.columns]
-            ois_df.columns = pd.MultiIndex.from_tuples(new_cols)
-        
-        logger.info(f"Successfully extracted OIS data with {len(ois_df)} rows")
-        return ois_df
-    except Exception as e:
-        logger.error(f"Error pulling OIS rates for tickers {tickers}: {e}")
-        raise
-
+        logger.error(f"Error pulling data for {tickers}: {e}")
+        return pd.DataFrame()
 
 def main():
     """
-    Main function to extract spot/dividend, futures, and OIS rate data from Bloomberg,
-    merge them into a single multi-index timeseries DataFrame using merge operations, 
-    and save the final DataFrame.
+    Main function to extract and merge Bloomberg data.
     """
     if USING_XBBG:
         try:
             logger.info(f"Pulling data from {START_DATE} to {END_DATE}")
 
-            spot_dfs = []
-            futures_dfs = []
+            spot_dfs, futures_dfs = [], []
             
             for index_name, cfg in INDEX_CONFIG.items():
-                logger.info(f"Processing {index_name} spot/dividend data")
-                spot_tickers = cfg["spot_ticker"]
-                if isinstance(spot_tickers, str):
-                    spot_tickers = [spot_tickers]
-                spot_df = pull_spot_div_data(spot_tickers, START_DATE, END_DATE)
-                # Data from bdh already has Date as the index, no need to set it
+                spot_tickers = [cfg["spot_ticker"]]
+                spot_df = pull_data(spot_tickers, ["PX_LAST", "IDX_EST_DVD_YLD", "INDX_GROSS_DAILY_DIV"], START_DATE, END_DATE)
                 spot_dfs.append(spot_df)
                 
-                logger.info(f"Processing {index_name} futures data")
-                fut_df = pull_futures_data(cfg["futures_tickers"], START_DATE, END_DATE)
-                # Data from bdh already has Date as the index, no need to set it
-                futures_dfs.append(fut_df)
+                futures_df = pull_data(cfg["futures_tickers"], ["PX_LAST", "PX_VOLUME", "OPEN_INT", "CURRENT_CONTRACT_MONTH_YR"], START_DATE, END_DATE)
+                futures_dfs.append(futures_df)
 
-            # Merge all spot dataframes
-            if spot_dfs:
-                all_spot = spot_dfs[0]
-                for df in spot_dfs[1:]:
-                    all_spot = all_spot.join(df, how='outer')
-            else:
-                all_spot = pd.DataFrame()
-            
-            # Merge all futures dataframes
-            if futures_dfs:
-                all_futures = futures_dfs[0]
-                for df in futures_dfs[1:]:
-                    all_futures = all_futures.join(df, how='outer')
-            else:
-                all_futures = pd.DataFrame()
-            
-            # Pull OIS data
-            ois_ticker_list = list(OIS_TICKERS.values())
-            ois_df = pull_ois_rates(ois_ticker_list, START_DATE, END_DATE)
-            
-            # Merge all dataframes
-            if not all_spot.empty:
-                final_df = all_spot
-                if not all_futures.empty:
-                    final_df = final_df.join(all_futures, how='outer')
-                final_df = final_df.join(ois_df, how='outer')
-            elif not all_futures.empty:
-                final_df = all_futures
-                final_df = final_df.join(ois_df, how='outer')
-            else:
-                final_df = ois_df
-            
+            # Merge all spot data
+            all_spot = pd.concat(spot_dfs, axis=1) if spot_dfs else pd.DataFrame()
+            all_futures = pd.concat(futures_dfs, axis=1) if futures_dfs else pd.DataFrame()
+
+            # Final merge
+            final_df = all_spot.join(all_futures, how='outer') if not all_spot.empty else all_futures
             final_df.sort_index(inplace=True)
             
-            # Create the output directory if it doesn't exist
+            # Save output
             INPUT_DIR.mkdir(parents=True, exist_ok=True)
-            
-            # Save the final merged DataFrame to parquet in _data/input
             output_path = INPUT_DIR / "bloomberg_historical_data.parquet"
             final_df.to_parquet(output_path)
             logger.info(f"Final merged data saved to {output_path}")
-            
+        
         except Exception as e:
             logger.error(f"Error extracting Bloomberg data: {e}")
             import traceback
