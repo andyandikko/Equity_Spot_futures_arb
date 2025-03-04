@@ -1,23 +1,5 @@
-"""
-OIS Data Extraction and Preprocessing Script
---------------------------------------------
-This script processes Bloomberg OIS rate data from a multi-index DataFrame,
-preparing it for merging with futures data in the next step.
-
-What this script does:
-1. **Extracts and formats OIS rates** from a Bloomberg multi-index dataset.
-2. **Ensures required OIS columns are present** and renames them for consistency.
-3. **Converts OIS rates from percentage to decimal format** (e.g., 4.5% → 0.045).
-4. **Saves the cleaned dataset**, ensuring all necessary tenors are present.
-
-What this script **does NOT** do:
-    - It does **not** interpolate missing values (this will be handled in the merging step with futures data).
-    - It does **not** compute time-to-maturity (TTM) (this depends on futures contract maturities).
-
-The final cleaned OIS dataset will be used to:
-- Interpolate missing rates based on TTM in the next script.
-- Merge with futures data for spread calculations.
-"""
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import pandas as pd
 import numpy as np
@@ -36,7 +18,6 @@ INPUT_DIR = config("INPUT_DIR")
 PROCESSED_DIR = config("PROCESSED_DIR")
 DATA_MANUAL = config("MANUAL_DATA_DIR")
 
-
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 log_file = Path(TEMP_DIR) / f'ois_processing_{timestamp}.log'
 logging.basicConfig(
@@ -49,27 +30,23 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
+# Required column mapping
 OIS_TENORS = {
-    "OIS_1W": "USSO1Z CMPN Curncy",  # 1 Week OIS Rate
-    "OIS_1M": "USSO1 CMPN Curncy",   # 1 Month OIS Rate
-    "OIS_3M": "USSO3 CMPN Curncy",   # 3 Month OIS Rate
-    "OIS_6M": "USSOF CMPN Curncy",   # 6 Month OIS Rate
-    "OIS_1Y": "USSO10 CMPN Curncy"   # 1 Year OIS Rate
+    "OIS_3M": "USSOC CMPN Curncy",   # 3 Month OIS Rate
 }
 
 def process_ois_data(filepath: Path) -> pd.DataFrame:
     """
-    Extracts, cleans, and formats OIS rate data from Bloomberg historical dataset.
+    Extracts, cleans, and formats only the 3-month OIS rate from Bloomberg historical dataset.
 
     Args:
         filepath (Path): Path to the parquet file containing multi-index Bloomberg data.
 
     Returns:
-        pd.DataFrame: Cleaned OIS dataset with required tenors formatted correctly.
+        pd.DataFrame: Cleaned OIS dataset containing only the 3-month OIS rate.
 
     Raises:
-        ValueError: If required OIS columns are missing.
+        ValueError: If the required OIS column is missing.
     """
     logger.info(f"Loading OIS data from {filepath}")
 
@@ -78,74 +55,53 @@ def process_ois_data(filepath: Path) -> pd.DataFrame:
     except Exception as e:
         logger.error(f"Error reading parquet file: {e}")
         raise
-    
 
     logger.info(f"Column levels: {ois_df.columns.names}")
-    logger.info(f"Level 0 sample: {ois_df.columns.get_level_values(0).tolist()}")
 
-    # Ensure all required OIS columns are present
-    missing_cols = [col for col in OIS_TENORS.values() if col not in ois_df.columns.get_level_values(0)]
-    if missing_cols:
-        raise ValueError(f"Missing required OIS columns: {missing_cols}")
+    # Ensure required OIS column is present
+    required_col = OIS_TENORS["OIS_3M"]
+    if (required_col, "PX_LAST") not in ois_df.columns:
+        raise ValueError(f"Missing required OIS column: {required_col}")
 
-    # Select only relevant OIS columns (matching the PX_LAST field)
-    try:
-        ois_df = ois_df.loc[:, (("USSO1Z CMPN Curncy", 
-                                 "USSO1 CMPN Curncy",
-                                 "USSO3 CMPN Curncy",
-                                 "USSOF CMPN Curncy",
-                                 "USSO10 CMPN Curncy"
-                                 ), 'PX_LAST')]
-    except KeyError as e:
-        logger.error(f"Error selecting OIS columns: {e}")
-        raise
+    # Select only the required 3-month OIS rate column
+    ois_df = ois_df.loc[:, [(required_col, "PX_LAST")]]
+    ois_df.columns = ["OIS_3M"]  # Rename to a clean column name
 
-    # Flatten MultiIndex column names
-    ois_df.columns = ois_df.columns.get_level_values(0)
-    rename_dict = {v: k for k, v in OIS_TENORS.items()}
-    ois_df = ois_df.rename(columns=rename_dict)
-    logger.info(f"Renamed OIS columns: {ois_df.columns}")
-    # Convert OIS rates to decimal format (if they are in percentage format)
-    for col in OIS_TENORS.keys():
-        logger.info(f"Checking if {col} is in percentage format")
-        if col in ois_df.columns:
-            logger.info(f"Converting {col} from percentage to decimal format")
-            ois_df[col] = ois_df[col] / 100
+    # Convert OIS rates from percentage to decimal format (if applicable)
+    logger.info("Converting OIS_3M from percentage to decimal format")
+    ois_df["OIS_3M"] = ois_df["OIS_3M"] / 100
 
+    # Drop rows with missing values
+    ois_df = ois_df.dropna(subset=["OIS_3M"])
 
+    # Save the cleaned dataset
     output_path = Path(PROCESSED_DIR) / "cleaned_ois_rates.csv"
     ois_df.to_csv(output_path, index=True)
     logger.info(f"Saved cleaned OIS rates to {output_path}")
-    # **LOG METADATA AFTER SAVING**
+
+    # Log dataset summary
     logger.info("\n========== OIS Data Summary ==========")
-    # Log basic shape of the dataset
     logger.info(f"Shape of dataset: {ois_df.shape} (rows, columns)")
-    # Log number of missing values per column
-    missing_summary = ois_df.isna().sum()
-    logger.info(f"Missing values per column:\n{missing_summary.to_string()}")
-    # Log basic descriptive statistics
+    logger.info(f"Missing values per column:\n{ois_df.isna().sum().to_string()}")
     logger.info("Descriptive statistics:\n%s", ois_df.describe().to_string())
-    # Log first few rows of dataset
     logger.info("First 5 rows of cleaned OIS data:\n%s", ois_df.head().to_string())
 
     return ois_df
 
-
 def main():
     """
     Main function to process OIS rates.
-    
-    It loads the Bloomberg historical data, extracts OIS rates,
-    cleans and formats them, and saves them for use in further analysis.
+    Loads Bloomberg historical data, extracts only the 3-month OIS rate,
+    cleans and formats it, and saves it for further use.
     """
     INPUT_FILE = Path(INPUT_DIR) / "bloomberg_historical_data.parquet"
-    
+
     if not os.path.exists(INPUT_FILE):
         logger.warning("Primary input file not found, switching to cached data")
         INPUT_FILE = Path(DATA_MANUAL) / "bloomberg_historical_data.parquet"
 
     try:
-        processed_data = process_ois_data(INPUT_FILE)
+        process_ois_data(INPUT_FILE)
         logger.info("OIS data processing completed successfully!")
     except Exception as e:
         logger.error(f"Error processing OIS data: {e}")
