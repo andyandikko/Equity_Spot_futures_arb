@@ -95,6 +95,7 @@ def main():
             output_path = INPUT_DIR / "bloomberg_historical_data.parquet"
             final_df.to_parquet(output_path)
             logger.info(f"Final merged data saved to {output_path}")
+            logger.info(f"Merged data: {final_df.head(20).to_string()}")
         
         except Exception as e:
             logger.error(f"Error extracting Bloomberg data: {e}")
@@ -106,3 +107,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
