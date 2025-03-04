@@ -32,7 +32,7 @@ from pathlib import Path
 import logging
 import sys
 
-# Insert your project-specific config or adapt paths as needed
+
 sys.path.insert(1, "./src")
 from settings import config
 
@@ -153,7 +153,7 @@ def process_index_forward_rates(index_code: str) -> pd.DataFrame:
     fut_df = pd.read_csv(fut_file)
     logger.info(f"[{index_code}] Loaded futures shape: {fut_df.shape}")
 
-    # Make sure 'Date' is datetime
+
     if "Date" not in fut_df.columns:
         logger.error(f"[{index_code}] No 'Date' column in {fut_file}, aborting.")
         return pd.DataFrame()
@@ -245,7 +245,7 @@ def process_index_forward_rates(index_code: str) -> pd.DataFrame:
     merged_df["Div_Sum2"] = merged_df["CumDiv_Term2"] - merged_df["CumDiv_current"]
 
     # Handle missing TTM or price
-    # If TTM is missing, we can't compute rates => drop
+    # If TTM is missing, can't compute rates => drop
     before_drop = len(merged_df)
     merged_df.dropna(subset=["Term1_TTM", "Term2_TTM", "Term1_Futures_Price", "Term2_Futures_Price"], inplace=True)
     logger.info(
@@ -293,7 +293,6 @@ def process_index_forward_rates(index_code: str) -> pd.DataFrame:
     # Spread
     spread_col = f"spread_{index_code}"
     merged_df[spread_col] = merged_df[f"cal_{index_code}_rf"] - merged_df[f"ois_fwd_{index_code}"]
-
     # 8) BN outlier filter
     merged_df = barndorff_nielsen_filter(merged_df, spread_col, date_col="Date", window=45, threshold=10)
     # If outlier => set cal_rf & spread to NaN
@@ -305,13 +304,8 @@ def process_index_forward_rates(index_code: str) -> pd.DataFrame:
     merged_df.loc[out_mask, spread_col] = np.nan
 
     # Multiply spread by 100 => bps
-    # (Stata does final scaling for e.g. cal_vname_rf and spread => do the same for the "spread_{index_code}" if you want)
-    merged_df[spread_col] = merged_df[spread_col] * 100.0
-    # If you also want to scale cal_{index_code}_rf and ois_fwd_{index_code} to bps:
-    # merged_df[f"cal_{index_code}_rf"] *= 100.0
-    # merged_df[f"ois_fwd_{index_code}"] *= 100.0
 
-    # Save final
+    merged_df[spread_col] = merged_df[spread_col] * 100.0
     merged_df.set_index("Date", inplace=True)
     out_file = Path(PROCESSED_DIR) / f"{index_code}_Forward_Rates.csv"
     merged_df.to_csv(out_file)
@@ -389,8 +383,6 @@ def main():
     for idx in INDEX_CODES:
         df_res = process_index_forward_rates(idx)
         results[idx] = df_res
-
-    # Plot everything in a single chart, reindexing to keep date axis unbroken
     plot_all_indices(results, keep_dates=True)
 
     logger.info("All computations completed successfully.")

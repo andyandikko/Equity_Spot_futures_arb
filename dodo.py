@@ -68,6 +68,9 @@ OUTPUT_DIR = config("OUTPUT_DIR")
 OS_TYPE = config("OS_TYPE")
 PUBLISH_DIR = config("PUBLISH_DIR")
 USER = config("USER")
+TEMP_DIR = config("TEMP_DIR")
+INPUT_DIR = config("INPUT_DIR")
+PROCESSED_DIR = config("PROCESSED_DIR")
 
 ## Helpers for handling Jupyter Notebook tasks
 # fmt: off
@@ -110,29 +113,24 @@ def task_config():
     """Create empty directories for data and output if they don't exist"""
     return {
         "actions": ["ipython ./src/settings.py"],
-        "targets": [DATA_DIR, OUTPUT_DIR],
+        "targets": [DATA_DIR, OUTPUT_DIR, TEMP_DIR, INPUT_DIR, PUBLISH_DIR, PROCESSED_DIR],
         "file_dep": ["./src/settings.py"],
         "clean": [],
     }
 
 
-def task_pull_fred():
+def task_pull_bloomberg():
     """ """
     file_dep = [
-        "./src/settings.py",
-        "./src/pull_fred.py",
-        "./src/pull_ofr_api_data.py",
+        "./src/settings.py"
     ]
     targets = [
-        DATA_DIR / "fred.parquet",
-        DATA_DIR / "ofr_public_repo_data.parquet",
+        INPUT_DIR / "bloomberg_historical_data.parquet"
     ]
 
     return {
         "actions": [
-            "ipython ./src/settings.py",
-            "ipython ./src/pull_fred.py",
-            "ipython ./src/pull_ofr_api_data.py",
+            "ipython ./src/pull_bloomberg_data.py",
         ],
         "targets": targets,
         "file_dep": file_dep,
