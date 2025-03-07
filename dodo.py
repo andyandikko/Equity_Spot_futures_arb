@@ -216,7 +216,7 @@ def task_process_futures_data():
         ],
         "file_dep": file_dep,
         "targets": targets,
-        "clean": True,  # Define the clean behavior appropriately if necessary
+        "clean": True,  
     }
 
 

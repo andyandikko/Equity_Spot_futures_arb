@@ -10,7 +10,7 @@
 # to match the appropriate syntax:
 ABlog==0.11.11
 black==24.8.0
-blp
+blpapi @ https://blpapi.bloomberg.com/repository/releases/python/simple/
 chartbook @ git+https://github.com/jmbejara/chartbook@main
 colorama
 doit==0.36.0

@@ -1,0 +1,130 @@
+\documentclass{article}
+
+% Language setting
+\usepackage[english]{babel}
+
+% Set page size and margins
+\usepackage[letterpaper,top=2cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
+
+% Useful packages
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+
+\title{Data Sources and Retrieval}
+\author{Your Name}
+
+\begin{document}
+\maketitle
+
+\section{Overview}
+The primary objective of this Bloomberg data retrieval script is to extract historical data required for \textbf{Equity Spot-Futures Arbitrage Analysis}. The primary data source for this project is the \textbf{Bloomberg Terminal}, aligning with the methodology used by the reference paper. The data extraction process is automated using the \textbf{Python xbbg package}, allowing seamless interaction with the Bloomberg Terminal API.
+
+To ensure reproducibility, the script supports both \textbf{live data extraction} and a fallback to \textbf{cached data}. Users can toggle data retrieval behavior using the \texttt{USING\_XBBG} environment variable in the configuration file. If \texttt{USING\_XBBG=True}, data is pulled directly from Bloomberg; otherwise, the script defaults to previously saved datasets.
+
+\section{Data Types and Key Tickers}
+The script retrieves three key types of financial data:
+
+\subsection{Spot Prices and Dividend Yields}
+\begin{itemize}
+  \item Required for computing spot-futures arbitrage.
+  \item Extracted for \textbf{S\&P 500 (SPX Index)}, \textbf{Nasdaq 100 (NDX Index)}, and \textbf{Dow Jones Industrial Average (INDU Index)}.
+  \item Bloomberg Fields:
+  \begin{itemize}
+    \item \texttt{PX\_LAST} -- Last traded price of the index.
+    \item \texttt{IDX\_EST\_DVD\_YLD} -- Estimated annual dividend yield.
+    \item \texttt{INDX\_GROSS\_DAILY\_DIV} -- Daily gross dividend.
+  \end{itemize}
+\end{itemize}
+
+\subsection{Equity Index Futures Contracts}
+\begin{itemize}
+  \item Used to construct \textbf{implied forward rates} for arbitrage calculations.
+  \item The script pulls \textbf{multiple futures contracts} per index, ordered by contract expiry:
+  \begin{itemize}
+    \item \textbf{Nearest (Front Month)}: ES1 Index, NQ1 Index, DM1 Index
+    \item \textbf{First Deferred}: ES2 Index, NQ2 Index, DM2 Index
+    \item \textbf{Second Deferred}: ES3 Index, NQ3 Index, DM3 Index
+    \item \textbf{Third Deferred}: ES4 Index, NQ4 Index, DM4 Index
+  \end{itemize}
+  \item Bloomberg Fields:
+  \begin{itemize}
+    \item \texttt{PX\_LAST} -- Last traded futures price.
+    \item \texttt{PX\_VOLUME} -- Trading volume.
+    \item \texttt{OPEN\_INT} -- Open interest.
+    \item \texttt{CURRENT\_CONTRACT\_MONTH\_YR} -- Expiry date of the futures contract.
+  \end{itemize}
+\end{itemize}
+
+\subsection{Overnight Indexed Swap (OIS) Rates}
+\begin{itemize}
+  \item Used as a benchmark for the risk-free rate in arbitrage calculations.
+  \item The script retrieves various OIS maturities, but \textbf{OIS\_3M (3-month OIS rate) is the primary reference}, as the paper states that interpolation across OIS rates is unnecessary.
+  \item Bloomberg Fields:
+  \begin{itemize}
+    \item \texttt{PX\_LAST} -- Last recorded interest rate.
+  \end{itemize}
+\end{itemize}
+
+\section{Data Extraction Process}
+The script is structured into three key functions, each responsible for fetching one category of data:
+
+\begin{enumerate}
+  \item \textbf{Spot Prices and Dividend Data Retrieval}
+  \begin{quote}
+    \texttt{pull\_spot\_div\_data(["SPX Index"], START\_DATE, END\_DATE)}
+  \end{quote}
+  - Fetches index price and dividend-related fields.\\
+  - Returns a multi-indexed pandas DataFrame with a timestamped index.
+
+  \item \textbf{Futures Contract Data Retrieval}
+  \begin{quote}
+    \texttt{pull\_futures\_data(["ES1 Index", "ES2 Index"], START\_DATE, END\_DATE)}
+  \end{quote}
+  - Retrieves price, volume, and open interest for futures contracts.\\
+  - Data is stored with a date-time index.
+
+  \item \textbf{OIS Rate Retrieval}
+  \begin{quote}
+    \texttt{pull\_ois\_rates(["USSOC CMPN Curncy"], START\_DATE, END\_DATE)}
+  \end{quote}
+  - Pulls OIS rates for different maturities.\\
+  - Primarily focuses on 3-month OIS.
+\end{enumerate}
+
+Once extracted, all datasets are merged into a \textbf{single time-series DataFrame} with a uniform date range defined by \texttt{START\_DATE} and \texttt{END\_DATE}.
+
+\section{Data Storage and Logging}
+\begin{itemize}
+  \item Extracted data is \textbf{saved as a Parquet file} for efficient storage and retrieval.
+  \item The script logs all activities using Python's \texttt{logging} module:
+  \begin{itemize}
+    \item Logs are stored in \texttt{\_output/temp/bloomberg\_data\_extraction.log}.
+    \item Errors are captured and printed to the console for debugging.
+  \end{itemize}
+\end{itemize}
+
+\section{Challenges and Considerations}
+During development, several issues were encountered with the \texttt{xbbg} package:
+\begin{itemize}
+  \item \textbf{Import Errors (blpapi not found)}
+  \begin{itemize}
+    \item Fixed by ensuring installation via:
+    \begin{quote}
+      \texttt{conda install -c conda-forge blpapi}
+    \end{quote}
+    \item Added to \texttt{requirements.txt} for reproducibility:
+    \begin{quote}
+      \texttt{blpapi @ https://blpapi.bloomberg.com/repository/releases/python/simple/}
+    \end{quote}
+  \end{itemize}
+  \item \textbf{Handling Asynchronous Market Closing Times}
+  \begin{itemize}
+    \item The script avoids spot/futures price mismatch by using \textbf{only futures-based implied forward rates} rather than direct spot-futures parity calculations.
+  \end{itemize}
+\end{itemize}
+
+\section{Conclusion}
+This script ensures that all \textbf{necessary raw financial data} is collected in an automated, reproducible manner. The retrieved data serves as the foundation for computing \textbf{equity spot-futures arbitrage spreads}, which will be further analyzed in subsequent scripts.
+
+\end{document}

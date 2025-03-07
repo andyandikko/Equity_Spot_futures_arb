@@ -1,3 +1,42 @@
+"""
+Bloomberg Data Extraction for Equity Spot-Futures Arbitrage Analysis
+
+This script automates the retrieval of historical market data using Bloomberg (via `xbbg`).
+It is designed to pull spot prices, futures contracts, and Overnight Indexed Swap (OIS) rates
+for S&P 500, Nasdaq 100, and Dow Jones indices, which are crucial for replicating 
+Equity Spot-Futures Arbitrage measures.
+
+---
+### **Functional Overview**
+1. **Configuration Handling**  
+   - Loads paths, date ranges, and Bloomberg settings from `settings.py`
+   - Ensures reproducibility via externalized configurations (`config("DATA_DIR")`, etc.)
+
+2. **Data Extraction**  
+   - **Spot & Dividend Data:** Extracts index spot prices and estimated dividends  
+   - **Futures Data:** Retrieves front-month and deferred futures contracts  
+   - **OIS Rates:** Collects short-term OIS rates to compare against implied forward rates  
+
+3. **Logging & Error Handling**  
+   - Logs all operations in a dedicated log file (`bloomberg_data_extraction.log`)  
+   - Captures and reports errors (e.g., Bloomberg API failures, network issues)  
+
+4. **Data Processing & Storage**  
+   - Combines all extracted datasets (spot, futures, OIS)  
+   - Outputs cleaned data to `bloomberg_historical_data.parquet` for later analysis  
+
+---
+### **Requirements**
+- Bloomberg Terminal & `xbbg` package must be available on the machine  
+- Ensure `settings.py` contains the necessary paths and toggles (`USING_XBBG`)  
+- Python packages: `pandas`, `numpy`, `datetime`, `pathlib`, `logging`, `xbbg`  
+
+---
+## **Author**: Andy Andikko and Harrison Zhang 
+## **Project**: Equity Spot-Futures Arbitrage
+## **Last Updated**: [2025-03-06]  
+"""
+
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -5,6 +44,7 @@ from pathlib import Path
 import logging
 import sys
 import os
+import traceback
 
 # Add the src directory to path to load configuration settings
 sys.path.insert(1, "./src")
@@ -59,6 +99,17 @@ OIS_TICKERS = {
 }
 
 def pull_spot_div_data(tickers, start_date, end_date):
+    """
+    Extracts spot price and dividend yield data for specified tickers from Bloomberg.
+
+    Args:
+        tickers (list): List of Bloomberg tickers (e.g., ["SPX Index"])
+        start_date (str): Start date in 'YYYY-MM-DD' format
+        end_date (str): End date in 'YYYY-MM-DD' format
+
+    Returns:
+        pd.DataFrame: DataFrame containing historical spot price and dividend estimates
+    """
     try:
         logger.info(f"Extracting spot/dividend data for {tickers}")
         fields = ["PX_LAST", "IDX_EST_DVD_YLD", "INDX_GROSS_DAILY_DIV"]
@@ -70,6 +121,17 @@ def pull_spot_div_data(tickers, start_date, end_date):
         return pd.DataFrame()
 
 def pull_futures_data(tickers, start_date, end_date):
+    """
+    Retrieves historical futures contract data from Bloomberg.
+
+    Args:
+        tickers (list): List of Bloomberg futures tickers (e.g., ["ES1 Index", "ES2 Index"])
+        start_date (str): Start date in 'YYYY-MM-DD' format
+        end_date (str): End date in 'YYYY-MM-DD' format
+
+    Returns:
+        pd.DataFrame: DataFrame with closing prices, volumes, open interest, and contract months
+    """
     try:
         logger.info(f"Extracting futures data for {tickers}")
         fields = ["PX_LAST", "PX_VOLUME", "OPEN_INT", "CURRENT_CONTRACT_MONTH_YR"]
@@ -81,6 +143,17 @@ def pull_futures_data(tickers, start_date, end_date):
         return pd.DataFrame()
 
 def pull_ois_rates(tickers, start_date, end_date):
+    """
+    Extracts Overnight Indexed Swap (OIS) rate data from Bloomberg.
+
+    Args:
+        tickers (list): List of OIS tickers (e.g., ["USSOC CMPN Curncy"])
+        start_date (str): Start date in 'YYYY-MM-DD' format
+        end_date (str): End date in 'YYYY-MM-DD' format
+
+    Returns:
+        pd.DataFrame: DataFrame containing OIS rates over time
+    """
     try:
         logger.info(f"Extracting OIS rates for {tickers}")
         fields = ["PX_LAST"]
@@ -92,6 +165,7 @@ def pull_ois_rates(tickers, start_date, end_date):
         return pd.DataFrame()
 
 def main():
+    """Main function to extract Bloomberg data and save it to a Parquet file."""
     if USING_XBBG:
         try:
             logger.info(f"Pulling data from {START_DATE} to {END_DATE}")
@@ -118,7 +192,6 @@ def main():
             logger.info(f"Final merged data saved to {output_path}")
         except Exception as e:
             logger.error(f"Error extracting Bloomberg data: {e}")
-            import traceback
             logger.error(traceback.format_exc())
             sys.exit(1)
     else:

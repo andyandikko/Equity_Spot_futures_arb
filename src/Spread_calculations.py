@@ -45,8 +45,7 @@ OUTPUT_DIR = config("OUTPUT_DIR")
 
 Path(OUTPUT_DIR).mkdir(exist_ok=True, parents=True)
 
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-log_file = Path(TEMP_DIR) / f"forward_rate_calculation_{timestamp}.log"
+log_file = Path(TEMP_DIR) / f"forward_rate_calculation.log"
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
