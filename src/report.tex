@@ -20,7 +20,7 @@
 \newcommand{\datadir}{../_data/processed}
 
 \title{Equity Spot-Futures Arbitrage Analysis}
-\author{Your Name}
+\author{Andy Andikko & Harrison Zhang}
 
 \begin{document}
 \maketitle
@@ -252,14 +252,57 @@ Examining our visualizations of the 3-month OIS rate data, we observe clear time
 
 These patterns are relevant to our equity spot-futures arbitrage analysis because OIS rates directly impact the theoretical funding costs for arbitrage strategies. Periods of rate volatility often correspond to wider arbitrage spreads as market participants face uncertainty about funding costs.
 
-\section{Forward Rate Calculations and Arbitrage Spreads}
-[This section would contain details about the forward rate calculations and resulting arbitrage spreads, built upon the OIS data processing described above.]
+\section{Futures Data Analysis}
+
+\subsection{Futures Contract Data Processing}
+
+The calculation of equity spot-futures arbitrage spreads requires properly processed futures data with accurate settlement dates and time-to-maturity (TTM) calculations. Below we analyze key aspects of the futures contract data for our three indices (S\&P 500, Nasdaq 100, and Dow Jones Industrial Average).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{\outputdir/es1_contract_roll_pattern.png}
+  \caption{S\&P 500 (ES1) Contract Roll Pattern (2010-2024). This figure illustrates how the front-month futures contract rolls over time, with each vertical step representing a roll to a new contract. The pattern shows quarterly rolls (typically March, June, September, December), which correspond to the CME's standard futures expiration cycle. Identifying these roll dates is crucial for our analysis as it helps account for potential price discontinuities in the time series that could distort implied forward rate calculations.}
+  \label{fig:es1_roll_pattern}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{\outputdir/es1_ttm_distribution.png}
+  \caption{Distribution of Time-to-Maturity for S\&P 500 (ES1) Front-Month Contract. This histogram demonstrates that most observations of the ES1 contract occur with 20-80 days to maturity, with a mean of approximately 45 days (red dashed line). The distribution is right-skewed because contracts are typically rolled before expiration to maintain liquidity. Note the small cluster at zero days, representing observations taken on settlement days. This distribution informs our understanding of the typical horizon for the first leg of our arbitrage calculations.}
+  \label{fig:es1_ttm_distribution}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{\outputdir/futures_prices_by_index.png}
+  \caption{Futures Prices for Term1 (Nearby) and Term2 (Deferred) Contracts by Index (2010-2024). This multi-panel figure shows the evolution of futures prices for all three indices, with the blue line representing the nearby contract and the red line representing the deferred contract. The price trajectories reflect major market movements, including the strong bull market (2010-2019), COVID-19 crash (2020), and subsequent recovery. The consistent premium of deferred contracts over nearby contracts (particularly visible during high interest rate periods like 2022-2023) reflects the cost-of-carry relationship that forms the basis of our arbitrage analysis. Deviations from this normal pattern may signal arbitrage opportunities.}
+  \label{fig:futures_prices}
+\end{figure}
+
+\subsection{Forward Rate and Arbitrage Spread Results}
+
+After processing the futures data and calculating the implied forward rates, we obtain equity spot-futures arbitrage spreads as shown below.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{\outputdir/all_indices_spread.png}
+  \caption{Equity Spot-Futures Arbitrage Spreads Across Indices (2010-2024). This figure displays the arbitrage spread, measured in basis points, between futures-implied forward rates and OIS rates for all three indices. Positive values indicate that the futures-implied funding rate exceeds the OIS rate, suggesting potential funding constraints or risk premiums in the market. Negative values suggest the opposite. The spread exhibits significant time variation and volatility clustering, with notable spikes during periods of market stress (2020) and monetary policy shifts (2022-2023). The co-movement across indices suggests common factors drive these arbitrage opportunities, while the differences in magnitude highlight index-specific dynamics. The Barndorff-Nielsen filter has been applied to remove outliers, ensuring that patterns reflect genuine market phenomena rather than data anomalies.}
+  \label{fig:arbitrage_spreads}
+\end{figure}
+
+\subsection{Data Quality Considerations}
+
+In our analysis of equity futures data, we encountered and addressed several data quality issues. Most notably, we found instances where the Time-to-Maturity (TTM) equals zero, particularly for SPX contracts. These cases represent observations taken exactly on settlement dates. Rather than discarding these data points, our forward rate calculation methodology handles them appropriately by:
+
+\begin{enumerate}
+  \item Using the difference between Term2\_TTM and Term1\_TTM as the denominator for annualizing rates
+  \item Applying conditional logic (\texttt{np.where(dt > 0, ...)} in the code) to set results to NaN when this difference is not positive
+  \item Filtering outliers using the Barndorff-Nielsen method to remove any anomalous spreads
+\end{enumerate}
+
+This robust approach ensures that our analysis captures genuine arbitrage opportunities while appropriately handling edge cases in the data.
 
 \section{Conclusion}
-Our OIS data processing pipeline ensures reliable and high-quality interest rate data for our equity spot-futures arbitrage analysis. The comprehensive data validation and quality assurance measures implemented guarantee that our arbitrage spread calculations accurately reflect market conditions rather than data artifacts.
-
-The historical patterns identified in the OIS rate data provide crucial context for interpreting the equity spot-futures arbitrage spreads. Periods of monetary policy transition or uncertainty typically correspond to increased funding cost volatility, which may create more significant arbitrage opportunities.
-
-This analysis forms the foundation for our broader investigation into the efficiency of equity futures markets and the dynamics of arbitrage spreads across different market conditions.
+Our OIS data processing pipeline ensures reliable and high-quality interest rate data for our equity spot-futures arbitrage analysis. The comprehensive data validation and quality assurance measures implemented guarantee that our arbitrage spread calculations accurately reflect market conditions rather than data artifacts. The historical patterns identified in the OIS rate data provide crucial context for interpreting the equity spot-futures arbitrage spreads. Periods of monetary policy transition or uncertainty typically correspond to increased funding cost volatility, which may create more significant arbitrage opportunities. This analysis forms the foundation for our broader investigation into the efficiency of equity futures markets and the dynamics of arbitrage spreads across different market conditions.
 
 \end{document}
