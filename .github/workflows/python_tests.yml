@@ -11,7 +11,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: '3.12'
     - name: Cache Python environment
       id: cache-python-env
       uses: actions/cache@v3
@@ -26,6 +26,10 @@ jobs:
         python -m venv .venv
         source .venv/bin/activate
         pip install -r requirements.txt
+    - name: Set up project environment
+      run: |
+        source .venv/bin/activate
+        python ./src/settings.py  # Adjust path if necessary
     - name: Test with pytest
       run: |
         source .venv/bin/activate
