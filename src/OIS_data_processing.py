@@ -16,9 +16,9 @@ The script performs the following tasks:
 
 ---
 ### **Requirements**
-- The script relies on a correctly formatted **Bloomberg Parquet file** (`bloomberg_historical_data.parquet`).
+- The script relies on the **Bloomberg Parquet file** (`bloomberg_historical_data.parquet`).
 - Requires `pandas`, `numpy`, `logging`, and `sys.path` for configuration handling.
-- Assumes paths are managed via an external `settings.py` configuration file.
+- Environment variables are set in a `.env` file and the directories are set in the `settings.py` configuration file.
 
 ---
 ## **Author**: Andy Andikko & Harrison Zhang 
