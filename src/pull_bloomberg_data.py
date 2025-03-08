@@ -51,7 +51,7 @@ sys.path.insert(1, "./src")
 from settings import config
 
 # Load configuration values
-USING_XBBG = True  # config("USING_XBBG")
+USING_XBBG = config("USING_XBBG")
 DATA_DIR = config("DATA_DIR")
 OUTPUT_DIR = config("OUTPUT_DIR")
 START_DATE = config("START_DATE")
