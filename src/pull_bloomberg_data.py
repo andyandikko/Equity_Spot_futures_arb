@@ -32,7 +32,7 @@ Equity Spot-Futures Arbitrage measures.
 - Python packages: `pandas`, `numpy`, `datetime`, `pathlib`, `logging`, `xbbg`  
 
 ---
-## **Author**: Andy Andikko and Harrison Zhang 
+## **Author**: Andy Andikko & Harrison Zhang 
 ## **Project**: Equity Spot-Futures Arbitrage
 ## **Last Updated**: [2025-03-06]  
 """
@@ -65,11 +65,13 @@ if USING_XBBG:
 else:
     print("Warning: xbbg not available. This script needs to be run on a machine with Bloomberg access.")
 
+
+log_file_path = TEMP_DIR/f'bloomberg_data_extraction.log'
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(TEMP_DIR / 'bloomberg_data_extraction.log'),
+        logging.FileHandler(log_file_path),
         logging.StreamHandler(sys.stdout)
     ]
 )
