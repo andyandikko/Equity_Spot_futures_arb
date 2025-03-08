@@ -108,15 +108,35 @@ def copy_file(origin_path, destination_path, mkdir=True):
 ##################################
 
 
-def task_config():
-    """Create empty directories for data and output if they don't exist"""
-    return {
-        "actions": ["ipython ./src/settings.py"],
-        "targets": [DATA_DIR, OUTPUT_DIR, TEMP_DIR, INPUT_DIR, PUBLISH_DIR, PROCESSED_DIR],
-        "file_dep": ["./src/settings.py"],
-        "clean": [],
-    }
+from pathlib import Path
+from settings import config
 
+# Define the paths based on configuration
+BASE_DIR = config("BASE_DIR")
+DATA_DIR = Path(config("DATA_DIR"))
+OUTPUT_DIR = Path(config("OUTPUT_DIR"))
+TEMP_DIR = Path(config("TEMP_DIR"))
+INPUT_DIR = Path(config("INPUT_DIR"))
+PUBLISH_DIR = Path(config("PUBLISH_DIR"))
+PROCESSED_DIR = Path(config("PROCESSED_DIR"))
+
+# Define log file paths
+LOG_FILES = [
+    TEMP_DIR / "futures_processing.log",
+    TEMP_DIR / "ois_processing.log",
+    TEMP_DIR / "bloomberg_data_extraction.log"
+]
+
+def task_config():
+    """Create empty directories for data and output if they don't exist, and ensure log files are created"""
+    return {
+        "actions": ["ipython ./src/settings.py"],  # This action should ensure directories and files are prepared
+        "targets": [
+            DATA_DIR, OUTPUT_DIR, TEMP_DIR, INPUT_DIR, PUBLISH_DIR, PROCESSED_DIR
+        ] + LOG_FILES,  # Include log files in the targets to manage their existence
+        "file_dep": ["./src/settings.py"],
+        "clean": True,  # This will clean up all directories and log files when 'doit clean' is executed
+    }
 
 def task_pull_bloomberg():
     """ """
