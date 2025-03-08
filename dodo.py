@@ -67,7 +67,6 @@ MANUAL_DATA_DIR = config("MANUAL_DATA_DIR")
 OUTPUT_DIR = config("OUTPUT_DIR")
 OS_TYPE = config("OS_TYPE")
 PUBLISH_DIR = config("PUBLISH_DIR")
-USER = config("USER")
 TEMP_DIR = config("TEMP_DIR")
 INPUT_DIR = config("INPUT_DIR")
 PROCESSED_DIR = config("PROCESSED_DIR")
@@ -191,10 +190,9 @@ def task_process_ois_data():
         "clean": True,  # Add appropriate clean actions if necessary
     }
 
-def task_process_futures_data():
+def task_spread_calculations():
     """
-    Process futures data for SPX, NDX, and INDU indices using the Bloomberg dataset.
-    This task depends on pulling Bloomberg data and potentially processing OIS data.
+    Spread calculations from processed data
     """
     file_dep = [
         "./src/settings.py",
@@ -203,16 +201,15 @@ def task_process_futures_data():
         "./src/futures_data_processing.py"
     ]
     targets = [
-        PROCESSED_DIR / "all_indices_calendar_spreads.csv",
-        PROCESSED_DIR / "SPX_calendar_spread.csv",
-        PROCESSED_DIR / "NDX_calendar_spread.csv",
-        PROCESSED_DIR / "INDU_calendar_spread.csv",
+        PROCESSED_DIR / "SPX_Forward_spread.csv",
+        PROCESSED_DIR / "NDX_Forward_spread.csv",
+        PROCESSED_DIR / "INDU_Forward_spread.csv",
         OUTPUT_DIR / "all_indices_spread.png"
     ]
 
     return {
         "actions": [
-            "python ./src/futures_data_processing.py",
+            "python ./src/Spread_calculations.py",
         ],
         "file_dep": file_dep,
         "targets": targets,
