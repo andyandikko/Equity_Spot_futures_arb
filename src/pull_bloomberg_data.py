@@ -199,19 +199,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-import os
-import pandas as pd
-idx = pd.IndexSlice
-
-os.getcwd()
-foo = pd.read_parquet("./_data/input/bloomberg_historical_data.parquet")
-foo_2 = pd.read_parquet("./data_manual/bloomberg_historical_data.parquet")
-
-columns = ["SPX Index","NDX Index","INDU Index","ES1 Index", "ES2 Index", "ES3 Index", "ES4 Index","NQ1 Index", "NQ2 Index", "NQ3 Index", "NQ4 Index",
-           "DM1 Index", "DM2 Index", "DM3 Index", "DM4 Index","USSOC CMPN Curncy"]
-foo.loc[:,idx[columns,:]]
-
-foo.to_csv("./_data/input/bloomberg_historical_data.csv")
-foo_2.to_csv("./_data/input/bloomberg_historical_data_2.csv")
+    
