@@ -10,22 +10,34 @@
 \usepackage{amsmath}
 \usepackage{graphicx}
 \usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{import}
 
-\title{Data Sources and Retrieval}
+\newcommand{\outputdir}{../_output}
+\newcommand{\datadir}{../_data/processed}
+
+\title{Equity Spot-Futures Arbitrage Analysis}
 \author{Your Name}
 
 \begin{document}
 \maketitle
 
-\section{Overview}
-The primary objective of this Bloomberg data retrieval script is to extract historical data required for \textbf{Equity Spot-Futures Arbitrage Analysis}. The primary data source for this project is the \textbf{Bloomberg Terminal}, aligning with the methodology used by the reference paper. The data extraction process is automated using the \textbf{Python xbbg package}, allowing seamless interaction with the Bloomberg Terminal API.
+\section{Introduction}
+This report documents our replication and analysis of equity spot-futures arbitrage as described in Hazelkorn et al. (2021). We follow a reproducible analytical pipeline (RAP) approach to extract, process, and analyze financial data from Bloomberg. Our analysis focuses on measuring arbitrage spreads between the futures-implied forward rate and the OIS benchmark rate for major equity indices.
+
+\section{Data Sources and Retrieval}
+\subsection{Overview}
+The primary objective of our Bloomberg data retrieval script is to extract historical data required for \textbf{Equity Spot-Futures Arbitrage Analysis}. The primary data source for this project is the \textbf{Bloomberg Terminal}, aligning with the methodology used by the reference paper. The data extraction process is automated using the \textbf{Python xbbg package}, allowing seamless interaction with the Bloomberg Terminal API.
 
 To ensure reproducibility, the script supports both \textbf{live data extraction} and a fallback to \textbf{cached data}. Users can toggle data retrieval behavior using the \texttt{USING\_XBBG} environment variable in the configuration file. If \texttt{USING\_XBBG=True}, data is pulled directly from Bloomberg; otherwise, the script defaults to previously saved datasets.
 
-\section{Data Types and Key Tickers}
+\subsection{Data Types and Key Tickers}
 The script retrieves three key types of financial data:
 
-\subsection{Spot Prices and Dividend Yields}
+\subsubsection{Spot Prices and Dividend Yields}
 \begin{itemize}
   \item Required for computing spot-futures arbitrage.
   \item Extracted for \textbf{S\&P 500 (SPX Index)}, \textbf{Nasdaq 100 (NDX Index)}, and \textbf{Dow Jones Industrial Average (INDU Index)}.
@@ -37,7 +49,7 @@ The script retrieves three key types of financial data:
   \end{itemize}
 \end{itemize}
 
-\subsection{Equity Index Futures Contracts}
+\subsubsection{Equity Index Futures Contracts}
 \begin{itemize}
   \item Used to construct \textbf{implied forward rates} for arbitrage calculations.
   \item The script pulls \textbf{multiple futures contracts} per index, ordered by contract expiry:
@@ -56,7 +68,7 @@ The script retrieves three key types of financial data:
   \end{itemize}
 \end{itemize}
 
-\subsection{Overnight Indexed Swap (OIS) Rates}
+\subsubsection{Overnight Indexed Swap (OIS) Rates}
 \begin{itemize}
   \item Used as a benchmark for the risk-free rate in arbitrage calculations.
   \item The script retrieves various OIS maturities, but \textbf{OIS\_3M (3-month OIS rate) is the primary reference}, as the paper states that interpolation across OIS rates is unnecessary.
@@ -66,7 +78,7 @@ The script retrieves three key types of financial data:
   \end{itemize}
 \end{itemize}
 
-\section{Data Extraction Process}
+\subsection{Data Extraction Process}
 The script is structured into three key functions, each responsible for fetching one category of data:
 
 \begin{enumerate}
@@ -94,7 +106,7 @@ The script is structured into three key functions, each responsible for fetching
 
 Once extracted, all datasets are merged into a \textbf{single time-series DataFrame} with a uniform date range defined by \texttt{START\_DATE} and \texttt{END\_DATE}.
 
-\section{Data Storage and Logging}
+\subsection{Data Storage and Logging}
 \begin{itemize}
   \item Extracted data is \textbf{saved as a Parquet file} for efficient storage and retrieval.
   \item The script logs all activities using Python's \texttt{logging} module:
@@ -104,7 +116,7 @@ Once extracted, all datasets are merged into a \textbf{single time-series DataFr
   \end{itemize}
 \end{itemize}
 
-\section{Challenges and Considerations}
+\subsection{Challenges and Considerations}
 During development, several issues were encountered with the \texttt{xbbg} package:
 \begin{itemize}
   \item \textbf{Import Errors (blpapi not found)}
@@ -115,7 +127,9 @@ During development, several issues were encountered with the \texttt{xbbg} packa
     \end{quote}
     \item Added to \texttt{requirements.txt} for reproducibility:
     \begin{quote}
-      \texttt{blpapi @ https://blpapi.bloomberg.com/repository/releases/python/simple/}
+      \texttt{--find-links https://blpapi.bloomberg.com/repository/releases/python/simple/blpapi/index.html
+      blpapi
+      }
     \end{quote}
   \end{itemize}
   \item \textbf{Handling Asynchronous Market Closing Times}
@@ -124,7 +138,128 @@ During development, several issues were encountered with the \texttt{xbbg} packa
   \end{itemize}
 \end{itemize}
 
+\section{OIS Data Processing}
+\subsection{Overview}
+The Overnight Indexed Swap (OIS) rate serves as our benchmark risk-free rate for equity spot-futures arbitrage analysis. This section details our methodology for processing the 3-month OIS rate from raw Bloomberg data into a clean, analysis-ready format.
+
+\subsection{Processing Methodology}
+Our OIS data processing pipeline follows these key steps:
+
+\begin{enumerate}
+  \item \textbf{Data Extraction}: We extract the 3-month OIS rate from the Bloomberg multi-index dataset, specifically targeting the \texttt{('USSOC CMPN Curncy', 'PX\_LAST')} column.
+  
+  \item \textbf{Format Conversion}: The extracted OIS rates are converted from percentage format to decimal format (e.g., from 3.25\% to 0.0325) to align with standard financial calculations.
+  
+  \item \textbf{Missing Value Handling}: We identify and remove any rows with missing OIS rates to ensure data quality.
+  
+  \item \textbf{Date Range Filtering}: The dataset is filtered to include only data within our analysis period (2010-01-01 to 2024-12-31).
+  
+  \item \textbf{Data Validation}: We implement comprehensive unit tests to ensure the processed data meets all requirements for downstream analysis.
+  
+  \item \textbf{Data Export}: The cleaned dataset is saved as a CSV file for use in subsequent analysis steps.
+\end{enumerate}
+
+\subsection{Data Quality Assurance}
+We implemented rigorous unit tests to ensure the OIS data meets all requirements for the equity spot-futures arbitrage calculations:
+
+\begin{itemize}
+  \item \textbf{Format Validation}: Ensuring OIS rates are properly converted to decimal format.
+  
+  \item \textbf{Completeness Checks}: Verifying no missing values exist in the final dataset.
+  
+  \item \textbf{Range Validation}: Confirming OIS rates fall within reasonable bounds (0\% to 50\%).
+  
+  \item \textbf{Time-Series Integrity}: Ensuring the data has a proper DatetimeIndex and is sorted chronologically.
+  
+  \item \textbf{Data Continuity}: Verifying there are no gaps exceeding 10 trading days, which is critical for reliable as-of merging in downstream calculations.
+  
+  \item \textbf{Date Coverage}: Ensuring sufficient coverage across the entire analysis period.
+\end{itemize}
+
+These tests are particularly important because the OIS rate serves as the benchmark for calculating arbitrage spreads. Any issues with the OIS data could significantly distort our arbitrage analysis.
+
+\subsection{Integration with Forward Rate Calculations}
+The processed OIS data integrates with the equity spot-futures arbitrage analysis in several critical ways:
+
+\begin{enumerate}
+  \item \textbf{As-Of Merging}: The OIS rates are merged with futures data using a backward-looking as-of merge to ensure we only use rates available at or before each futures observation date.
+  
+  \item \textbf{Dividend Compounding}: The OIS rate is used to compound expected dividends over the futures contract lifetime.
+  
+  \item \textbf{OIS-Implied Forward Rate}: The OIS rate generates a theoretical forward rate as the benchmark for comparison with futures-implied forward rates.
+  
+  \item \textbf{Arbitrage Spread Calculation}: The difference between the futures-implied forward rate and the OIS-implied forward rate forms our key arbitrage spread metric.
+\end{enumerate}
+
+\section{OIS Rate Analysis}
+\subsection{Historical Context and Patterns}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{\outputdir/ois_3m_rate_time_series.png}
+  \caption{3-Month OIS Rate (2010-2024). This figure shows the evolution of the 3-month OIS rate over our analysis period. The rate follows distinct regimes corresponding to major monetary policy phases: post-financial crisis low rates (2010-2015), gradual normalization (2016-2019), COVID-19 shock (2020), and inflation-driven tightening (2022-2023). These regime shifts directly impact funding costs for arbitrageurs and help explain variations in the equity spot-futures arbitrage spread.}
+  \label{fig:ois_time_series}
+\end{figure}
+
+Examining our visualizations of the 3-month OIS rate data, we observe clear time-varying patterns in both mean and volatility that correspond to significant macroeconomic events:
+
+\begin{enumerate}
+  \item \textbf{Post-Financial Crisis Period (2010-2015)}:
+  \begin{itemize}
+    \item Low and stable OIS rates (near zero) reflecting the Federal Reserve's accommodative monetary policy following the 2008-2009 financial crisis
+    \item Limited volatility as the Fed maintained its \href{https://www.federalreserve.gov/monetarypolicy/review-of-monetary-policy-strategy-tools-and-communications-fed-listens-events.htm}{zero interest rate policy (ZIRP)}
+  \end{itemize}
+
+  \item \textbf{Gradual Normalization (2016-2019)}:
+  \begin{itemize}
+    \item Steady increase in OIS rates as the Federal Reserve implemented its \href{https://www.federalreserve.gov/monetarypolicy/policy-normalization.htm}{policy normalization program}
+    \item December 2015 marked the first rate hike after nearly a decade at zero
+    \item Reduced balance sheet and rising federal funds rate target led to a gradual upward trend in OIS rates
+  \end{itemize}
+
+  \item \textbf{COVID-19 Pandemic Shock (2020)}:
+  \begin{itemize}
+    \item Sharp spike in volatility in March 2020 corresponding to the \href{https://www.federalreserve.gov/newsevents/pressreleases/monetary20200315a.htm}{global COVID-19 market panic}
+    \item Dramatic rate cuts by the Federal Reserve returning to near-zero rates
+    \item Implementation of extensive quantitative easing and emergency liquidity facilities
+  \end{itemize}
+
+  \item \textbf{Inflation Surge and Monetary Tightening (2022-2023)}:
+  \begin{itemize}
+    \item Pronounced upward trend in OIS rates beginning in early 2022
+    \item Reflects the Federal Reserve's \href{https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm}{aggressive rate hiking cycle} in response to persistent inflation
+    \item OIS rates reached their highest levels in over a decade
+  \end{itemize}
+
+  \item \textbf{Stabilization Period (2024)}:
+  \begin{itemize}
+    \item More recent data shows signs of stabilization as markets anticipate the end of the tightening cycle
+    \item Volatility moderates as uncertainty about monetary policy path decreases \href{https://www.crfb.org/blogs/fed-cuts-rates-treasury-yields-are-rising}{CRFB}
+  \end{itemize}
+\end{enumerate}
+
+\subsection{OIS Rate Statistical Properties}
+
+% Import the summary statistics table generated by our analysis script
+\input{\outputdir/ois_summary_statistics.tex}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{\outputdir/ois_3m_rolling_statistics.png}
+  \caption{OIS Rate Trends and Volatility (30-day and 90-day rolling windows). This figure illustrates both the evolving trend (top panel) and volatility (bottom panel) in the 3-month OIS rate. The volatility spikes in early 2020 and throughout 2022-2023 coincide with periods of monetary policy uncertainty. These volatility patterns are crucial for understanding when equity spot-futures arbitrage opportunities may have been most pronounced, as uncertainty about funding costs typically widens arbitrage spreads.}
+  \label{fig:ois_rolling_stats}
+\end{figure}
+
+These patterns are relevant to our equity spot-futures arbitrage analysis because OIS rates directly impact the theoretical funding costs for arbitrage strategies. Periods of rate volatility often correspond to wider arbitrage spreads as market participants face uncertainty about funding costs.
+
+\section{Forward Rate Calculations and Arbitrage Spreads}
+[This section would contain details about the forward rate calculations and resulting arbitrage spreads, built upon the OIS data processing described above.]
+
 \section{Conclusion}
-This script ensures that all \textbf{necessary raw financial data} is collected in an automated, reproducible manner. The retrieved data serves as the foundation for computing \textbf{equity spot-futures arbitrage spreads}, which will be further analyzed in subsequent scripts.
+Our OIS data processing pipeline ensures reliable and high-quality interest rate data for our equity spot-futures arbitrage analysis. The comprehensive data validation and quality assurance measures implemented guarantee that our arbitrage spread calculations accurately reflect market conditions rather than data artifacts.
+
+The historical patterns identified in the OIS rate data provide crucial context for interpreting the equity spot-futures arbitrage spreads. Periods of monetary policy transition or uncertainty typically correspond to increased funding cost volatility, which may create more significant arbitrage opportunities.
+
+This analysis forms the foundation for our broader investigation into the efficiency of equity futures markets and the dynamics of arbitrage spreads across different market conditions.
 
 \end{document}
