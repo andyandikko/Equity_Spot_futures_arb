@@ -5,7 +5,7 @@ from pathlib import Path
 from OIS_data_processing import process_ois_data, PROCESSED_DIR
 
 # Change this path to wherever your input parquet file is located
-INPUT_DIR = "/Users/harrisonzhang/Desktop/Equity_Spot_futures_arb/data_manual"
+INPUT_DIR = "../data_manual"
 INPUT_PARQUET_FILE = "bloomberg_historical_data.parquet"
 
 # Example placeholders for date range checks – adjust as needed
