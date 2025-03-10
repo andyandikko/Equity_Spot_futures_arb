@@ -2,15 +2,29 @@ import pytest
 import pandas as pd
 import numpy as np
 from pathlib import Path
+import os
+from settings import config
+INPUT_DIR = config("INPUT_DIR")
+DATA_MANUAL = config("MANUAL_DATA_DIR")
+PROCESSED_DIR = config("PROCESSED_DIR")
+INPUT_PARQUET_FILE = "bloomberg_historical_data.parquet"
+OUTPUT_DIR = config("OUTPUT_DIR")
+TEMP_DIR = config("TEMP_DIR")
+DATA_DIR = config("DATA_DIR")
+if os.path.exists(INPUT_DIR / INPUT_PARQUET_FILE):
+    print("Parquet file exists")
+    parquet_path  = INPUT_DIR / INPUT_PARQUET_FILE
+else:
+    print("Parquet file does not exist, using manual data")
+    parquet_path = DATA_MANUAL / INPUT_PARQUET_FILE
 
-# -----------------------------------------------------------------------------
-# 1) Set your actual file paths here:
-REAL_DATA_FILE = Path("../data_manual/equity_spreads_test_data.csv")
+# File to test with, retrieved from Professor Jeremey's repo
+REAL_DATA_FILE = Path(DATA_MANUAL / "equity_spreads_test_data.csv")
 
 FORWARD_RATE_FILES = {
-    "NDX": Path("../_data/processed/NDX_Forward_Rates.csv"),   # Contains columns [Date, spread_NDX]
-    "SPX": Path("../_data/processed/SPX_Forward_Rates.csv"),   # Contains columns [Date, spread_SPX]
-    "DOW": Path("../_data/processed/INDU_Forward_Rates.csv"),   # Contains columns [Date, spread_INDU]
+    "NDX": Path(PROCESSED_DIR / "NDX_Forward_Rates.csv"),   # Contains columns [Date, spread_NDX]
+    "SPX": Path(PROCESSED_DIR / "SPX_Forward_Rates.csv"),   # Contains columns [Date, spread_SPX]
+    "DOW": Path(PROCESSED_DIR /"INDU_Forward_Rates.csv"),   # Contains columns [Date, spread_INDU]
 }
 
 # 2) Map the ticker to (ForwardRatesColumn, RealDataColumn):
@@ -176,3 +190,6 @@ def test_monotonic_date_index(forward_df):
     assert duplicates == 0, (
         f"{ticker} forward rates index has {duplicates} duplicate date(s)."
     )
+    
+if __name__ == "__main__":
+    pytest.main(["-v", __file__])

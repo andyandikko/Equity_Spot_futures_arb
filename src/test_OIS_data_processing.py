@@ -1,16 +1,47 @@
+"""
+OIS Data Processing Test Suite
+------------------------------
+
+This module provides comprehensive testing for the OIS (Overnight Indexed Swap) 
+rate data processing pipeline, which is a critical component in the equity 
+spot-futures arbitrage analysis.
+
+The test suite validates:
+1. Data integrity (non-empty, correct columns, no missing values)
+2. Data format (decimal representation, DatetimeIndex, sorted)
+3. Data quality (reasonable bounds, continuity, sufficient coverage)
+4. Output format (correct CSV structure for downstream processes)
+
+These tests ensure that the OIS data processing component meets all requirements
+for the forward rate calculations and arbitrage spread analysis. Each test 
+includes detailed rationale explaining its importance in the context of the
+overall analytical pipeline.
+
+The tests use the actual processing function and data sources to verify both
+correct implementation and appropriate data quality.
+"""
+
 import pytest
 import pandas as pd
 from pathlib import Path
+from settings import config
+from OIS_data_processing import process_ois_data
+import os
 
-from OIS_data_processing import process_ois_data, PROCESSED_DIR
-
-# Change this path to wherever your input parquet file is located
-INPUT_DIR = "../data_manual"
+INPUT_DIR = config("INPUT_DIR")
+DATA_MANUAL = config("MANUAL_DATA_DIR")
+PROCESSED_DIR = config("PROCESSED_DIR")
 INPUT_PARQUET_FILE = "bloomberg_historical_data.parquet"
 
-# Example placeholders for date range checks – adjust as needed
-START_DATE = "2020-01-01"
-END_DATE = "2020-12-31"
+if os.path.exists(INPUT_DIR / INPUT_PARQUET_FILE):
+    print("Parquet file exists")
+    parquet_path  = INPUT_DIR / INPUT_PARQUET_FILE
+else:
+    print("Parquet file does not exist, using manual data")
+    parquet_path = DATA_MANUAL / INPUT_PARQUET_FILE
+
+START_DATE = "2010-01-01"
+END_DATE = "2024-12-31"
 
 
 @pytest.fixture(scope="module")
@@ -18,7 +49,6 @@ def ois_df() -> pd.DataFrame:
     """
     Loads the actual parquet file from INPUT_DIR using `process_ois_data`.
     """
-    parquet_path = Path(INPUT_DIR) / INPUT_PARQUET_FILE
     return process_ois_data(parquet_path)
 
 
@@ -171,3 +201,6 @@ def test_csv_output_exists(ois_df):
 
     # Check that OIS_3M column exists
     assert "OIS_3M" in test_df.columns, "CSV must have an 'OIS_3M' column"
+    
+if __name__ == "__main__":
+    pytest.main(["-v", __file__])

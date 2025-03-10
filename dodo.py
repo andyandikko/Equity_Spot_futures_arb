@@ -238,9 +238,11 @@ def task_spread_calculations():
 
 
 notebook_tasks = {
-    "01_example_notebook_interactive.ipynb": {
-        "file_dep": [],
-        "targets": [],
+    "01_OIS_Data_Processing": {
+        "file_dep": ["./src/pull_bloomberg_data.py", "./src/OIS_data_processing.py"],
+        "targets": [OUTPUT_DIR / 'ois_3m_rolling_statistics.png',
+                    OUTPUT_DIR / 'ois_3m_rate_time_series.png',
+                    OUTPUT_DIR / "ois_summary_statistics.tex"],
     },
     "02_example_with_dependencies.ipynb": {
         "file_dep": ["./src/pull_fred.py"],
@@ -421,47 +423,47 @@ def task_run_notebooks():
 # # ###############################################################
 
 
-# def task_compile_latex_docs():
-#     """Compile the LaTeX documents to PDFs"""
-#     file_dep = [
-#         "./reports/report_example.tex",
-#         "./reports/my_article_header.sty",
-#         "./reports/slides_example.tex",
-#         "./reports/my_beamer_header.sty",
-#         "./reports/my_common_header.sty",
-#         "./reports/report_simple_example.tex",
-#         "./reports/slides_simple_example.tex",
-#         "./src/example_plot.py",
-#         "./src/example_table.py",
-#     ]
-#     targets = [
-#         "./reports/report_example.pdf",
-#         "./reports/slides_example.pdf",
-#         "./reports/report_simple_example.pdf",
-#         "./reports/slides_simple_example.pdf",
-#     ]
+def task_compile_latex_docs():
+    """Compile the LaTeX documents to PDFs"""
+    file_dep = [
+        "./reports/report_example.tex",
+        "./reports/my_article_header.sty",
+        "./reports/slides_example.tex",
+        "./reports/my_beamer_header.sty",
+        "./reports/my_common_header.sty",
+        "./reports/report_simple_example.tex",
+        "./reports/slides_simple_example.tex",
+        "./src/example_plot.py",
+        "./src/example_table.py",
+    ]
+    targets = [
+        "./reports/report_example.pdf",
+        "./reports/slides_example.pdf",
+        "./reports/report_simple_example.pdf",
+        "./reports/slides_simple_example.pdf",
+    ]
 
-#     return {
-#         "actions": [
-#             # My custom LaTeX templates
-#             "latexmk -xelatex -halt-on-error -cd ./reports/report_example.tex",  # Compile
-#             "latexmk -xelatex -halt-on-error -c -cd ./reports/report_example.tex",  # Clean
-#             "latexmk -xelatex -halt-on-error -cd ./reports/slides_example.tex",  # Compile
-#             "latexmk -xelatex -halt-on-error -c -cd ./reports/slides_example.tex",  # Clean
-#             # Simple templates based on small adjustments to Overleaf templates
-#             "latexmk -xelatex -halt-on-error -cd ./reports/report_simple_example.tex",  # Compile
-#             "latexmk -xelatex -halt-on-error -c -cd ./reports/report_simple_example.tex",  # Clean
-#             "latexmk -xelatex -halt-on-error -cd ./reports/slides_simple_example.tex",  # Compile
-#             "latexmk -xelatex -halt-on-error -c -cd ./reports/slides_simple_example.tex",  # Clean
-#             #
-#             # Example of compiling and cleaning in another directory. This often fails, so I don't use it
-#             # f"latexmk -xelatex -halt-on-error -cd -output-directory=../_output/ ./reports/report_example.tex",  # Compile
-#             # f"latexmk -xelatex -halt-on-error -c -cd -output-directory=../_output/ ./reports/report_example.tex",  # Clean
-#         ],
-#         "targets": targets,
-#         "file_dep": file_dep,
-#         "clean": True,
-#     }
+    return {
+        "actions": [
+            # My custom LaTeX templates
+            "latexmk -xelatex -halt-on-error -cd ./reports/report_example.tex",  # Compile
+            "latexmk -xelatex -halt-on-error -c -cd ./reports/report_example.tex",  # Clean
+            "latexmk -xelatex -halt-on-error -cd ./reports/slides_example.tex",  # Compile
+            "latexmk -xelatex -halt-on-error -c -cd ./reports/slides_example.tex",  # Clean
+            # Simple templates based on small adjustments to Overleaf templates
+            "latexmk -xelatex -halt-on-error -cd ./reports/report_simple_example.tex",  # Compile
+            "latexmk -xelatex -halt-on-error -c -cd ./reports/report_simple_example.tex",  # Clean
+            "latexmk -xelatex -halt-on-error -cd ./reports/slides_simple_example.tex",  # Compile
+            "latexmk -xelatex -halt-on-error -c -cd ./reports/slides_simple_example.tex",  # Clean
+            #
+            # Example of compiling and cleaning in another directory. This often fails, so I don't use it
+            # f"latexmk -xelatex -halt-on-error -cd -output-directory=../_output/ ./reports/report_example.tex",  # Compile
+            # f"latexmk -xelatex -halt-on-error -c -cd -output-directory=../_output/ ./reports/report_example.tex",  # Clean
+        ],
+        "targets": targets,
+        "file_dep": file_dep,
+        "clean": True,
+    }
 
 notebook_sphinx_pages = [
     "./docs/notebooks/EX_" + notebook.split(".")[0] + ".html"
