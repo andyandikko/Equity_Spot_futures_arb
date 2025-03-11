@@ -1,7 +1,3 @@
 # Manually-Created Data
 
-This folder is used to hold manually created data that cannot be easily replicated.
-You may keep data here and keep it under version control if it is small enough.
-Keeping this data under version control can provide some peace of mind
-that the data is not inadvertently modified.
-Also, keep in mind that Git LFS is a good option if the data is large.
+This folder contains manually cached bloomberg pulled data in the event that the user has no access to the bloomberg terminal. By deafault, with the USING_XBBG set as False in .env, the raw data used is the bloomberg_hostorical_data.parquet, and the data to test with is the equity_spreads_test_data.csv.

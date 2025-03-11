@@ -101,7 +101,7 @@ coverage.xml
 *.log
 
 # Sphinx documentation
-docs/
+# docs/
 /docs_src/apidocs
 
 
@@ -252,3 +252,4 @@ src/z_scratch_pipeline_template.ipynb
 
 old_files/
 /_output/temp/
+src/report.synctex(busy)

@@ -66,8 +66,10 @@ DATA_DIR = config("DATA_DIR")
 MANUAL_DATA_DIR = config("MANUAL_DATA_DIR")
 OUTPUT_DIR = config("OUTPUT_DIR")
 OS_TYPE = config("OS_TYPE")
-PUBLISH_DIR = config("PUBLISH_DIR")
-USER = config("USER")
+# PUBLISH_DIR = config("PUBLISH_DIR")
+TEMP_DIR = config("TEMP_DIR")
+INPUT_DIR = config("INPUT_DIR")
+PROCESSED_DIR = config("PROCESSED_DIR")
 
 ## Helpers for handling Jupyter Notebook tasks
 # fmt: off
@@ -106,33 +108,48 @@ def copy_file(origin_path, destination_path, mkdir=True):
 ##################################
 
 
+from pathlib import Path
+from settings import config
+
+# Define the paths based on configuration
+BASE_DIR = config("BASE_DIR")
+DATA_DIR = Path(config("DATA_DIR"))
+OUTPUT_DIR = Path(config("OUTPUT_DIR"))
+TEMP_DIR = Path(config("TEMP_DIR"))
+INPUT_DIR = Path(config("INPUT_DIR"))
+# PUBLISH_DIR = Path(config("PUBLISH_DIR"))
+PROCESSED_DIR = Path(config("PROCESSED_DIR"))
+
+# Define log file paths
+LOG_FILES = [
+    TEMP_DIR / "futures_processing.log",
+    TEMP_DIR / "ois_processing.log",
+    TEMP_DIR / "bloomberg_data_extraction.log"
+]
+
 def task_config():
-    """Create empty directories for data and output if they don't exist"""
+    """Create empty directories for data and output if they don't exist, and ensure log files are created"""
     return {
-        "actions": ["ipython ./src/settings.py"],
-        "targets": [DATA_DIR, OUTPUT_DIR],
+        "actions": ["ipython ./src/settings.py"],  # This action should ensure directories and files are prepared
+        "targets": [
+            DATA_DIR, OUTPUT_DIR, TEMP_DIR, INPUT_DIR,  PROCESSED_DIR
+        ] + LOG_FILES,  # Include log files in the targets to manage their existence
         "file_dep": ["./src/settings.py"],
-        "clean": [],
+        "clean": True,  # This will clean up all directories and log files when 'doit clean' is executed
     }
 
-
-def task_pull_fred():
+def task_pull_bloomberg():
     """ """
     file_dep = [
-        "./src/settings.py",
-        "./src/pull_fred.py",
-        "./src/pull_ofr_api_data.py",
+        "./src/settings.py"
     ]
     targets = [
-        DATA_DIR / "fred.parquet",
-        DATA_DIR / "ofr_public_repo_data.parquet",
+        INPUT_DIR / "bloomberg_historical_data.parquet"
     ]
 
     return {
         "actions": [
-            "ipython ./src/settings.py",
-            "ipython ./src/pull_fred.py",
-            "ipython ./src/pull_ofr_api_data.py",
+            "ipython ./src/pull_bloomberg_data.py",
         ],
         "targets": targets,
         "file_dep": file_dep,
@@ -146,27 +163,103 @@ def task_pull_fred():
         # to clean and forget the cheaper tasks.
     }
 
+def task_process_futures_data():
+    """
+    Process futures data for indices after pulling the latest data.
+    """
+    file_dep = [
+        "./src/settings.py",
+        "./src/pull_bloomberg_data.py",
+        "./src/futures_data_processing.py"
+    ]
+    targets = [
+        PROCESSED_DIR / "all_indices_calendar_spreads.csv",
+        PROCESSED_DIR / "INDU_calendar_spread.csv",
+        PROCESSED_DIR / "SPX_calendar_spread.csv",
+        PROCESSED_DIR / "NDX_calendar_spread.csv",
+    ]
+
+    return {
+        "actions": [
+            "python ./src/futures_data_processing.py",
+        ],
+        "file_dep": file_dep,
+        "targets": targets,
+        "clean": True,  
+    }
+
+def task_process_ois_data():
+    """
+    Process OIS data for 3-month rates after pulling the latest Bloomberg data.
+    """
+    file_dep = [
+        "./src/settings.py",
+        "./src/pull_bloomberg_data.py",
+        "./src/OIS_data_processing.py"
+    ]
+    targets = [
+        PROCESSED_DIR / "cleaned_ois_rates.csv"
+    ]
+
+    return {
+        "actions": [
+            "python ./src/OIS_data_processing.py",
+        ],
+        "file_dep": file_dep,
+        "targets": targets,
+        "clean": True,  # Add appropriate clean actions if necessary
+    }
+
+def task_spread_calculations():
+    """
+    Spread calculations from processed data
+    """
+    file_dep = [
+        "./src/settings.py",
+        "./src/pull_bloomberg_data.py",
+        "./src/OIS_data_processing.py",  
+        "./src/futures_data_processing.py"
+    ]
+    targets = [
+        PROCESSED_DIR / "SPX_Forward_Rates.csv",
+        PROCESSED_DIR / "NDX_Forward_Rates.csv",
+        PROCESSED_DIR / "INDU_Forward_Rates.csv",
+        OUTPUT_DIR / "all_indices_spread_to_2020.png",
+        OUTPUT_DIR / "all_indices_spread_to_present.png"
+    ]
+
+    return {
+        "actions": [
+            "python ./src/Spread_calculations.py",
+        ],
+        "file_dep": file_dep,
+        "targets": targets,
+        "clean": True,  
+    }
 
 
 notebook_tasks = {
-    "01_example_notebook_interactive.ipynb": {
-        "file_dep": [],
-        "targets": [],
+    "01_OIS_Data_Processing.ipynb": {
+        "file_dep": ["./src/settings.py","./src/pull_bloomberg_data.py", "./src/OIS_data_processing.py"],
+        "targets": [OUTPUT_DIR / 'ois_3m_rolling_statistics.png',
+                    OUTPUT_DIR / 'ois_3m_rate_time_series.png',
+                    OUTPUT_DIR / "ois_summary_statistics.tex"],
     },
-    "02_example_with_dependencies.ipynb": {
-        "file_dep": ["./src/pull_fred.py"],
-        "targets": [Path(OUTPUT_DIR) / "GDP_graph.png"],
+    "02_Futures_Data_Processing.ipynb": {
+        "file_dep": ["./src/settings.py","./src/pull_bloomberg_data.py", "./src/futures_data_processing.py"],
+        "targets": [OUTPUT_DIR / "es1_contract_roll_pattern.png",
+                    OUTPUT_DIR / "es1_ttm_distribution.png",
+                    OUTPUT_DIR / "futures_prices_by_index.png",],
     },
-    "03_public_repo_summary_charts.ipynb": {
+    "03_Spread_Calculations.ipynb": {
         "file_dep": [
-            "./src/pull_fred.py",
-            "./src/pull_ofr_api_data.py",
-            "./src/pull_public_repo_data.py",
+            "./src/settings.py",
+            "./src/pull_bloomberg_data.py", 
+            "./src/futures_data_processing.py",
+            "./src/OIS_data_processing.py",
+            "./src/Spread_calculations.py"
         ],
-        "targets": [
-            OUTPUT_DIR / "repo_rate_spikes_and_relative_reserves_levels.png",
-            OUTPUT_DIR / "rates_relative_to_midpoint.png",
-        ],
+        "targets": [],
     },
 }
 
@@ -210,6 +303,11 @@ def task_run_notebooks():
                     OUTPUT_DIR / f"{notebook_name}.ipynb",
                     mkdir=True,
                 ),
+                copy_file(
+                    Path("./src") / f"{notebook_name}.ipynb",
+                    Path("./_docs/notebooks/") / f"{notebook_name}.ipynb",
+                    mkdir=True,
+                ),
                 jupyter_clear_output(notebook_name),
                 # jupyter_to_python(notebook_name, build_dir),
                 """python -c "import sys; from datetime import datetime; print(f'End """ + notebook + """: {datetime.now()}', file=sys.stderr)" """,
@@ -226,164 +324,67 @@ def task_run_notebooks():
             "clean": True,
         }
 
-# ##############################$
-# ## Demo: Other misc. data pulls
-# ##############################$
-# # def task_pull_other():
-# #     """ """
-# #     file_dep = [
-# #         "./src/pull_bloomberg.py",
-# #         "./src/pull_CRSP_Compustat.py",
-# #         "./src/pull_CRSP_stock.py",
-# #         "./src/pull_fed_yield_curve.py",
-# #         ]
-# #     file_output = [
-# #         "bloomberg.parquet",
-# #         "CRSP_Compustat.parquet",
-# #         "CRSP_stock.parquet",
-# #         "fed_yield_curve.parquet",
-# #         ]
-# #     targets = [DATA_DIR / file for file in file_output]
 
-# #     return {
-# #         "actions": [
-# #             "ipython ./src/pull_bloomberg.py",
-# #             "ipython ./src/pull_CRSP_Compustat.py",
-# #             "ipython ./src/pull_CRSP_stock.py",
-# #             "ipython ./src/pull_fed_yield_curve.py",
-# #         ],
-# #         "targets": targets,
-# #         "file_dep": file_dep,
-# #         "clean": [],  # Don't clean these files by default.
-# #     }
-
-
-# def task_summary_stats():
-#     """ """
-#     file_dep = ["./src/example_table.py"]
-#     file_output = [
-#         "example_table.tex",
-#         "pandas_to_latex_simple_table1.tex",
-#     ]
-#     targets = [OUTPUT_DIR / file for file in file_output]
-
-#     return {
-#         "actions": [
-#             "ipython ./src/example_table.py",
-#             "ipython ./src/pandas_to_latex_demo.py",
-#         ],
-#         "targets": targets,
-#         "file_dep": file_dep,
-#         "clean": True,
-#     }
-
-
-# def task_example_plot():
-#     """Example plots"""
-#     file_dep = [Path("./src") / file for file in ["example_plot.py", "pull_fred.py"]]
-#     file_output = ["example_plot.png"]
-#     targets = [OUTPUT_DIR / file for file in file_output]
-
-#     return {
-#         "actions": [
-#             # "date 1>&2",
-#             # "time ipython ./src/example_plot.py",
-#             "ipython ./src/example_plot.py",
-#         ],
-#         "targets": targets,
-#         "file_dep": file_dep,
-#         "clean": True,
-#     }
-
-
-# def task_chart_repo_rates():
-#     """Example charts for Chart Book"""
-#     file_dep = [
-#         "./src/pull_fred.py",
-#         "./src/chart_relative_repo_rates.py",
-#     ]
-#     targets = [
-#         DATA_DIR / "repo_public.parquet",
-#         DATA_DIR / "repo_public.xlsx",
-#         DATA_DIR / "repo_public_relative_fed.parquet",
-#         DATA_DIR / "repo_public_relative_fed.xlsx",
-#         OUTPUT_DIR / "repo_rates.html",
-#         OUTPUT_DIR / "repo_rates_normalized.html",
-#         OUTPUT_DIR / "repo_rates_normalized_w_balance_sheet.html",
-#     ]
-
-#     return {
-#         "actions": [
-#             # "date 1>&2",
-#             # "time ipython ./src/chart_relative_repo_rates.py",
-#             "ipython ./src/chart_relative_repo_rates.py",
-#         ],
-#         "targets": targets,
-#         "file_dep": file_dep,
-#         "clean": True,
-#     }
-
-
-# fmt: on
-
-
-# # ###############################################################
-# # ## Task below is for LaTeX compilation
-# # ###############################################################
-
-
-# def task_compile_latex_docs():
-#     """Compile the LaTeX documents to PDFs"""
-#     file_dep = [
-#         "./reports/report_example.tex",
-#         "./reports/my_article_header.sty",
-#         "./reports/slides_example.tex",
-#         "./reports/my_beamer_header.sty",
-#         "./reports/my_common_header.sty",
-#         "./reports/report_simple_example.tex",
-#         "./reports/slides_simple_example.tex",
-#         "./src/example_plot.py",
-#         "./src/example_table.py",
-#     ]
-#     targets = [
-#         "./reports/report_example.pdf",
-#         "./reports/slides_example.pdf",
-#         "./reports/report_simple_example.pdf",
-#         "./reports/slides_simple_example.pdf",
-#     ]
-
-#     return {
-#         "actions": [
-#             # My custom LaTeX templates
-#             "latexmk -xelatex -halt-on-error -cd ./reports/report_example.tex",  # Compile
-#             "latexmk -xelatex -halt-on-error -c -cd ./reports/report_example.tex",  # Clean
-#             "latexmk -xelatex -halt-on-error -cd ./reports/slides_example.tex",  # Compile
-#             "latexmk -xelatex -halt-on-error -c -cd ./reports/slides_example.tex",  # Clean
-#             # Simple templates based on small adjustments to Overleaf templates
-#             "latexmk -xelatex -halt-on-error -cd ./reports/report_simple_example.tex",  # Compile
-#             "latexmk -xelatex -halt-on-error -c -cd ./reports/report_simple_example.tex",  # Clean
-#             "latexmk -xelatex -halt-on-error -cd ./reports/slides_simple_example.tex",  # Compile
-#             "latexmk -xelatex -halt-on-error -c -cd ./reports/slides_simple_example.tex",  # Clean
-#             #
-#             # Example of compiling and cleaning in another directory. This often fails, so I don't use it
-#             # f"latexmk -xelatex -halt-on-error -cd -output-directory=../_output/ ./reports/report_example.tex",  # Compile
-#             # f"latexmk -xelatex -halt-on-error -c -cd -output-directory=../_output/ ./reports/report_example.tex",  # Clean
-#         ],
-#         "targets": targets,
-#         "file_dep": file_dep,
-#         "clean": True,
-#     }
+# ###############################################################
+# ## Sphinx documentation
+# ###############################################################
 
 notebook_sphinx_pages = [
-    "./docs/notebooks/EX_" + notebook.split(".")[0] + ".html"
+    "./_docs/_build/html/notebooks/" + notebook.split(".")[0] + ".html"
     for notebook in notebook_tasks.keys()
 ]
 sphinx_targets = [
-    "./docs/index.html",
-    "./docs/myst_markdown_demos.html",
-    "./docs/apidocs/index.html",
-    *notebook_sphinx_pages,
+    "./_docs/_build/html/index.html",
+    *notebook_sphinx_pages
 ]
+
+
+def copy_docs_src_to_docs():
+    """
+    Copy all files and subdirectories from the docs_src directory to the _docs directory.
+    This function loops through all files in docs_src and copies them individually to _docs,
+    preserving the directory structure. It does not delete the contents of _docs beforehand.
+    """
+    src = Path("docs_src")
+    dst = Path("_docs")
+
+    # Ensure the destination directory exists
+    dst.mkdir(parents=True, exist_ok=True)
+
+    # Loop through all files and directories in docs_src
+    for item in src.rglob("*"):
+        relative_path = item.relative_to(src)
+        target = dst / relative_path
+        if item.is_dir():
+            target.mkdir(parents=True, exist_ok=True)
+        else:
+            shutil.copy2(item, target)
+
+
+def copy_docs_build_to_docs():
+    """
+    Copy all files and subdirectories from _docs/_build/html to docs.
+    This function copies each file individually while preserving the directory structure.
+    It does not delete any existing contents in docs.
+    After copying, it creates an empty .nojekyll file in the docs directory.
+    """
+    src = Path("_docs/_build/html")
+    dst = Path("docs")
+    dst.mkdir(parents=True, exist_ok=True)
+
+    # Loop through all files and directories in src
+    for item in src.rglob("*"):
+        relative_path = item.relative_to(src)
+        target = dst / relative_path
+        if item.is_dir():
+            target.mkdir(parents=True, exist_ok=True)
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(item, target)
+
+    # Touch an empty .nojekyll file in the docs directory.
+    (dst / ".nojekyll").touch()
+
 
 def task_compile_sphinx_docs():
     """Compile Sphinx Docs"""
@@ -392,158 +393,45 @@ def task_compile_sphinx_docs():
         for notebook in notebook_tasks.keys()
     ]
     file_dep = [
-        "./README.md",
-        "./pipeline.json",
+        "./docs_src/conf.py",
+        "./docs_src/index.md",
         *notebook_scripts,
     ]
 
     return {
         "actions": [
-            "chartbook generate -f",
-        ],  # Use docs as build destination
-        # "actions": ["sphinx-build -M html ./docs/ ./docs/_build"], # Previous standard organization
+            copy_docs_src_to_docs,
+            "sphinx-build -M html ./_docs/ ./_docs/_build",
+            copy_docs_build_to_docs,
+        ],
         "targets": sphinx_targets,
         "file_dep": file_dep,
-        "task_dep": ["run_notebooks",],
+        "task_dep": ["run_notebooks"],
         "clean": True,
     }
 
 
-###############################################################
-## Uncomment the task below if you have R installed. See README
-###############################################################
+
+# # ###############################################################
+# # ## Task below is for LaTeX compilation
+# # ###############################################################
 
 
-# def task_install_r_packages():
-#     """Example R plots"""
-#     file_dep = [
-#         "r_requirements.txt",
-#         "./src/install_packages.R",
-#     ]
-#     targets = [OUTPUT_DIR / "R_packages_installed.txt"]
+def task_compile_latex_docs():
+    """Compile the LaTeX documents to PDFs"""
+    file_dep = [
+        "./reports/report.tex"
+    ]
+    targets = [
+        "./reports/report.pdf"
+    ]
 
-#     return {
-#         "actions": [
-#             "Rscript ./src/install_packages.R",
-#         ],
-#         "targets": targets,
-#         "file_dep": file_dep,
-#         "clean": True,
-#     }
-
-
-# def task_example_r_script():
-#     """Example R plots"""
-#     file_dep = [
-#         "./src/pull_fred.py",
-#         "./src/example_r_plot.R"
-#     ]
-#     targets = [
-#         OUTPUT_DIR / "example_r_plot.png",
-#     ]
-
-#     return {
-#         "actions": [
-#             "Rscript ./src/example_r_plot.R",
-#         ],
-#         "targets": targets,
-#         "file_dep": file_dep,
-#         "task_dep": ["pull_fred"],
-#         "clean": True,
-#     }
-
-
-# rmarkdown_tasks = {
-#     "04_example_regressions.Rmd": {
-#         "file_dep": ["./src/pull_fred.py"],
-#         "targets": [],
-#     },
-#     # "04_example_regressions.Rmd": {
-#     #     "file_dep": ["./src/pull_fred.py"],
-#     #     "targets": [],
-#     # },
-# }
-
-
-# def task_knit_RMarkdown_files():
-#     """Preps the RMarkdown files for presentation format.
-#     This will knit the RMarkdown files for easier sharing of results.
-#     """
-#     # def knit_string(file):
-#     #     return f"""Rscript -e "library(rmarkdown); rmarkdown::render('./src/04_example_regressions.Rmd', output_format='html_document', output_dir='./_output/')"""
-#     str_output_dir = str(OUTPUT_DIR).replace("\\", "/")
-#     def knit_string(file):
-#         """
-#         Properly escapes the quotes and concatenates so that this will run.
-#         The single line version above was harder to get right because of weird
-#         quotation escaping errors.
-
-#         Example command:
-#         Rscript -e "library(rmarkdown); rmarkdown::render('./src/04_example_regressions.Rmd', output_format='html_document', output_dir='./_output/')
-#         """
-#         return (
-#             "Rscript -e "
-#             '"library(rmarkdown); '
-#             f"rmarkdown::render('./src/{file}.Rmd', "
-#             "output_format='html_document', "
-#             f"output_dir='{str_output_dir}')\""
-#         )
-
-#     for notebook in rmarkdown_tasks.keys():
-#         notebook_name = notebook.split(".")[0]
-#         file_dep = [f"./src/{notebook}", *rmarkdown_tasks[notebook]["file_dep"]]
-#         html_file = f"{notebook_name}.html"
-#         targets = [f"{OUTPUT_DIR / html_file}", *rmarkdown_tasks[notebook]["targets"]]
-#         actions = [
-#             # "module use -a /opt/aws_opt/Modulefiles",
-#             # "module load R/4.2.2",
-#             knit_string(notebook_name)
-#         ]
-
-#         yield {
-#             "name": notebook,
-#             "actions": actions,
-#             "file_dep": file_dep,
-#             "targets": targets,
-#             "clean": True,
-#             # "verbosity": 1,
-#         }
-
-
-###################################################################
-## Uncomment the task below if you have Stata installed. See README
-###################################################################
-
-# if OS_TYPE == "windows":
-#     STATA_COMMAND = f"{config.STATA_EXE} /e"
-# elif OS_TYPE == "nix":
-#     STATA_COMMAND = f"{config.STATA_EXE} -b"
-# else:
-#     raise ValueError(f"OS_TYPE {OS_TYPE} is unknown")
-
-# def task_example_stata_script():
-#     """Example Stata plots
-
-#     Make sure to run
-#     ```
-#     net install doenv, from(https://github.com/vikjam/doenv/raw/master/) replace
-#     ```
-#     first to install the doenv package: https://github.com/vikjam/doenv.
-#     """
-#     file_dep = [
-#         "./src/pull_fred.py",
-#         "./src/example_stata_plot.do",
-#     ]
-#     targets = [
-#         OUTPUT_DIR / "example_stata_plot.png",
-#     ]
-#     return {
-#         "actions": [
-#             f"{STATA_COMMAND} do ./src/example_stata_plot.do",
-#         ],
-#         "targets": targets,
-#         "file_dep": file_dep,
-#         "task_dep": ["pull_fred"],
-#         "clean": True,
-#         "verbosity": 2,
-#     }
+    return {
+        "actions": [
+            "latexmk -xelatex -halt-on-error -cd ./reports/report.tex",  # Compile
+            "latexmk -xelatex -halt-on-error -c -cd ./reports/report.tex"  # Clean
+        ],
+        "targets": targets,
+        "file_dep": file_dep,
+        "clean": True,
+    }

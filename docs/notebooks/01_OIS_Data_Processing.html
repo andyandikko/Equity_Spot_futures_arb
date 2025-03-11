@@ -1,0 +1,1506 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>OIS Rate Data Processing Walkthrough &#8212; Equity Spot Futures Arbitrage Replication</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=a3416100" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=dfe6caa3a7d634c4db9b" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
+  <script src="../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
+
+    <script src="../_static/documentation_options.js?v=b9472d72"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'notebooks/01_OIS_Data_Processing';</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Futures Data Processing Walkthrough" href="02_Futures_Data_Processing.html" />
+    <link rel="prev" title="HW5: SPX Hedging with Options" href="../index.html" /> 
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>   
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search this book..."
+         aria-label="Search this book..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo.png" class="logo__image only-light" alt="Equity Spot Futures Arbitrage Replication - Home"/>
+    <script>document.write(`<img src="../_static/logo.png" class="logo__image only-dark" alt="Equity Spot Futures Arbitrage Replication - Home"/>`);</script>
+  
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+ <script>
+ document.write(`
+   <button class="btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        
+        <ul class="nav bd-sidenav bd-sidenav__home-link">
+            <li class="toctree-l1">
+                <a class="reference internal" href="../index.html">
+                    HW5: SPX Hedging with Options
+                </a>
+            </li>
+        </ul>
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Notebooks 📖</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">OIS Rate Data Processing Walkthrough</a></li>
+<li class="toctree-l1"><a class="reference internal" href="02_Futures_Data_Processing.html">Futures Data Processing Walkthrough</a></li>
+<li class="toctree-l1"><a class="reference internal" href="03_Spread_Calculations.html">Equity Spot-Futures Arbitrage: Implied Forward Rate Computation</a></li>
+
+
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-source-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
+    <i class="fab fa-github"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://github.com/jmbejara/blank_project" target="_blank"
+   class="btn btn-sm btn-source-repository-button dropdown-item"
+   title="Source repository"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="btn__text-container">Repository</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/jmbejara/blank_project/issues/new?title=Issue%20on%20page%20%2Fnotebooks/01_OIS_Data_Processing.html&body=Your%20issue%20content%20here." target="_blank"
+   class="btn btn-sm btn-source-issues-button dropdown-item"
+   title="Open an issue"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="btn__text-container">Open issue</span>
+</a>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/notebooks/01_OIS_Data_Processing.ipynb" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.ipynb</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"></i>
+  </button>
+`);
+</script>
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm pst-navbar-icon search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+  </button>
+`);
+</script>
+<button class="sidebar-toggle secondary-toggle btn btn-sm" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>OIS Rate Data Processing Walkthrough</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#project-context-equity-spot-futures-arbitrage">Project Context: Equity Spot-Futures Arbitrage</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#loading-libraries-and-directories-setup">Loading libraries and directories setup</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#data-inspection-and-extraction">Data Inspection and Extraction</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#data-cleaning-and-transformation">Data Cleaning and Transformation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#data-visualization">Data Visualization</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#rolling-statistics-analysis">Rolling Statistics Analysis</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#unit-tests-for-ois-data-processing">Unit Tests for OIS Data Processing</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#test-1-check-for-non-empty-dataframe">Test 1: Check for Non-Empty DataFrame</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#test-2-verify-ois-3m-column-exists">Test 2: Verify OIS_3M Column Exists</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#test-3-confirm-decimal-format-conversion">Test 3: Confirm Decimal Format Conversion</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#test-4-ensure-no-missing-values">Test 4: Ensure No Missing Values</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#test-5-validate-reasonable-rate-range">Test 5: Validate Reasonable Rate Range</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#test-6-verify-datetimeindex">Test 6: Verify DatetimeIndex</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#test-7-check-data-continuity-for-merging-consistency-10-day-threshold">Test 7: Check Data Continuity for merging consistency (10-day threshold)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#test-8-confirm-sorted-index">Test 8: Confirm Sorted Index</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#test-9-verify-date-range-coverage">Test 9: Verify Date Range Coverage</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#test-10-validate-csv-output-format">Test 10: Validate CSV Output Format</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#as-of-merge-in-downstream-process">As-Of Merge in Downstream Process</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#saving-summary-table-for-latex-document">Saving summary table for latex document</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integration-with-equity-spot-futures-arbitrage-analysis">Integration with Equity Spot-Futures Arbitrage Analysis</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-ois-data-will-be-used">How OIS Data Will Be Used</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#expected-outputs">Expected Outputs</a></li>
+</ul>
+</li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                   <section class="tex2jax_ignore mathjax_ignore" id="ois-rate-data-processing-walkthrough">
+<h1>OIS Rate Data Processing Walkthrough<a class="headerlink" href="#ois-rate-data-processing-walkthrough" title="Link to this heading">#</a></h1>
+<p>This notebook demonstrates the data processing pipeline for Overnight Indexed Swap (OIS) rate data, which is an essential component of our equity spot-futures arbitrage analysis project.</p>
+<section id="project-context-equity-spot-futures-arbitrage">
+<h2>Project Context: Equity Spot-Futures Arbitrage<a class="headerlink" href="#project-context-equity-spot-futures-arbitrage" title="Link to this heading">#</a></h2>
+<p>Our project replicates a key component of the arbitrage analysis from Hazelkorn et al. (2021), focusing on the <strong>equity spot-futures arbitrage spread</strong>. This spread measures potential arbitrage opportunities between equity spot and futures markets.</p>
+<p>In a perfectly efficient market, the no-arbitrage futures price follows:</p>
+<div class="math notranslate nohighlight">
+\[F_{t,\tau} = S_t(1+r^f_{t,\tau}) - E^Q_t[D_{t,\tau}]\]</div>
+<p>Where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(F_{t,\tau}\)</span> is the futures price at time <span class="math notranslate nohighlight">\(t\)</span> for maturity <span class="math notranslate nohighlight">\(t+\tau\)</span></p></li>
+<li><p><span class="math notranslate nohighlight">\(S_t\)</span> is the spot price at time <span class="math notranslate nohighlight">\(t\)</span></p></li>
+<li><p><span class="math notranslate nohighlight">\(r^f_{t,\tau}\)</span> is the risk-free rate</p></li>
+<li><p><span class="math notranslate nohighlight">\(E^Q_t[D_{t,\tau}]\)</span> is the expected dividend yield under risk-neutral measure</p></li>
+</ul>
+<p>Due to the timing mismatch between equity spot markets (close at 4:00 PM EST) and futures markets (close at 4:15 PM EST), we focus on the <strong>implied forward rate</strong> derived from two futures contracts with different maturities <span class="math notranslate nohighlight">\(\tau_1 &lt; \tau_2\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[1 + f^{\tau_1,\tau_2}_t = \frac{F_{t,\tau_2} + E^Q_t[D_{t,\tau_2}]}{F_{t,\tau_1} + E^Q_t[D_{t,\tau_1}]}\]</div>
+<p>The equity spot-futures arbitrage spread is defined as:</p>
+<div class="math notranslate nohighlight">
+\[ESF_t = f^{\tau_1,\tau_2}_t - OIS3M_t\]</div>
+<p>where <span class="math notranslate nohighlight">\(OIS3M_t\)</span> is the 3-month OIS rate, serving as our benchmark risk-free rate.</p>
+<p><strong>In this notebook, we focus on the processing of the 3-month OIS rate data (OIS3M), which is a critical component for calculating the ESF spread.</strong></p>
+</section>
+<section id="loading-libraries-and-directories-setup">
+<h2>Loading libraries and directories setup<a class="headerlink" href="#loading-libraries-and-directories-setup" title="Link to this heading">#</a></h2>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;./src&quot;</span><span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">config</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="s1">&#39;src&#39;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">():</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">pardir</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">())</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>C:\Users\Andik\OneDrive\Desktop\Chicago\Full_stack_QF\Equity_Spot_futures_arb
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">DATA_DIR</span> <span class="o">=</span> <span class="n">config</span><span class="p">(</span><span class="s2">&quot;DATA_DIR&quot;</span><span class="p">)</span>
+<span class="n">TEMP_DIR</span> <span class="o">=</span> <span class="n">config</span><span class="p">(</span><span class="s2">&quot;TEMP_DIR&quot;</span><span class="p">)</span>
+<span class="n">INPUT_DIR</span> <span class="o">=</span> <span class="n">config</span><span class="p">(</span><span class="s2">&quot;INPUT_DIR&quot;</span><span class="p">)</span>
+<span class="n">PROCESSED_DIR</span> <span class="o">=</span> <span class="n">config</span><span class="p">(</span><span class="s2">&quot;PROCESSED_DIR&quot;</span><span class="p">)</span>
+<span class="n">DATA_MANUAL</span> <span class="o">=</span> <span class="n">config</span><span class="p">(</span><span class="s2">&quot;MANUAL_DATA_DIR&quot;</span><span class="p">)</span>
+<span class="n">START_DATE</span> <span class="o">=</span> <span class="n">config</span><span class="p">(</span><span class="s2">&quot;START_DATE&quot;</span><span class="p">)</span>
+<span class="n">END_DATE</span> <span class="o">=</span> <span class="n">config</span><span class="p">(</span><span class="s2">&quot;END_DATE&quot;</span><span class="p">)</span>
+<span class="n">OUTPUT_DIR</span> <span class="o">=</span> <span class="n">config</span><span class="p">(</span><span class="s2">&quot;OUTPUT_DIR&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">log_file</span> <span class="o">=</span> <span class="n">TEMP_DIR</span> <span class="o">/</span> <span class="sa">f</span><span class="s1">&#39;ois_processing.log&#39;</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+    <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+    <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1"> - </span><span class="si">%(levelname)s</span><span class="s1"> - </span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">,</span>
+    <span class="n">handlers</span><span class="o">=</span><span class="p">[</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">FileHandler</span><span class="p">(</span><span class="n">log_file</span><span class="p">),</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
+    <span class="p">]</span>
+<span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Required column mapping</span>
+<span class="n">OIS_TENORS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;OIS_3M&quot;</span><span class="p">:</span> <span class="s2">&quot;USSOC CMPN Curncy&quot;</span><span class="p">,</span>   <span class="c1"># 3 Month OIS Rate</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">INPUT_FILE</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">INPUT_DIR</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;bloomberg_historical_data.parquet&quot;</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">INPUT_FILE</span><span class="p">):</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Primary input file not found, switching to cached data&quot;</span><span class="p">)</span>
+    <span class="n">INPUT_FILE</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">DATA_MANUAL</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;bloomberg_historical_data.parquet&quot;</span>
+    
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:52,609 - WARNING - Primary input file not found, switching to cached data
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading OIS data from </span><span class="si">{</span><span class="n">INPUT_FILE</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">ois_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">INPUT_FILE</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error reading parquet file: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">raise</span>
+
+<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Column levels: </span><span class="si">{</span><span class="n">ois_df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">names</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:52,624 - INFO - Loading OIS data from C:\Users\Andik\OneDrive\Desktop\Chicago\Full_stack_QF\Equity_Spot_futures_arb\data_manual\bloomberg_historical_data.parquet
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:52,704 - INFO - Column levels: [None, None]
+</pre></div>
+</div>
+</div>
+</div>
+</section>
+<section id="data-inspection-and-extraction">
+<h2>Data Inspection and Extraction<a class="headerlink" href="#data-inspection-and-extraction" title="Link to this heading">#</a></h2>
+<p>Let’s examine the structure of the OIS data and extract the 3-month OIS rate:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Ensure required OIS column is present</span>
+<span class="n">required_col</span> <span class="o">=</span> <span class="n">OIS_TENORS</span><span class="p">[</span><span class="s2">&quot;OIS_3M&quot;</span><span class="p">]</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">required_col</span><span class="p">,</span> <span class="s2">&quot;PX_LAST&quot;</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ois_df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing required OIS column: </span><span class="si">{</span><span class="n">required_col</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Select only the required 3-month OIS rate column</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Extracting 3-month OIS rate column&quot;</span><span class="p">)</span>
+<span class="n">ois_df</span> <span class="o">=</span> <span class="n">ois_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="p">[(</span><span class="n">required_col</span><span class="p">,</span> <span class="s2">&quot;PX_LAST&quot;</span><span class="p">)]]</span>
+<span class="n">ois_df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;OIS_3M&quot;</span><span class="p">]</span>  <span class="c1"># Rename to a clean column name</span>
+
+<span class="c1"># Display the first few rows</span>
+<span class="n">display</span><span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:52,728 - INFO - Extracting 3-month OIS rate column
+</pre></div>
+</div>
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>OIS_3M</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>2010-01-01</th>
+      <td>0.162</td>
+    </tr>
+    <tr>
+      <th>2010-01-04</th>
+      <td>0.162</td>
+    </tr>
+    <tr>
+      <th>2010-01-05</th>
+      <td>0.155</td>
+    </tr>
+    <tr>
+      <th>2010-01-06</th>
+      <td>0.146</td>
+    </tr>
+    <tr>
+      <th>2010-01-07</th>
+      <td>0.145</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pd</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="s1">&#39;display.max_columns&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+<span class="n">ois_df</span><span class="o">.</span><span class="n">columns</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Index([&#39;OIS_3M&#39;], dtype=&#39;object&#39;)
+</pre></div>
+</div>
+</div>
+</div>
+<p>First thing to note about the data pulled from bloomberg is that it is structured in a multiindex format.</p>
+</section>
+<section id="data-cleaning-and-transformation">
+<h2>Data Cleaning and Transformation<a class="headerlink" href="#data-cleaning-and-transformation" title="Link to this heading">#</a></h2>
+<p>Now we’ll clean the data and convert OIS rates from percentage to decimal format:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Check for missing values before cleaning</span>
+<span class="n">missing_before</span> <span class="o">=</span> <span class="n">ois_df</span><span class="p">[</span><span class="s2">&quot;OIS_3M&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing values before cleaning: </span><span class="si">{</span><span class="n">missing_before</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Convert OIS rates from percentage to decimal format</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Converting OIS_3M from percentage to decimal format&quot;</span><span class="p">)</span>
+<span class="n">ois_df</span><span class="p">[</span><span class="s2">&quot;OIS_3M&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ois_df</span><span class="p">[</span><span class="s2">&quot;OIS_3M&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">100</span>
+
+<span class="c1"># Display the first few rows after conversion</span>
+<span class="n">display</span><span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+
+<span class="c1"># Drop rows with missing values</span>
+<span class="n">ois_df_clean</span> <span class="o">=</span> <span class="n">ois_df</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;OIS_3M&quot;</span><span class="p">])</span>
+<span class="n">dropped_rows</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ois_df</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">ois_df_clean</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dropped </span><span class="si">{</span><span class="n">dropped_rows</span><span class="si">}</span><span class="s2"> rows with missing values&quot;</span><span class="p">)</span>
+<span class="n">ois_df</span> <span class="o">=</span> <span class="n">ois_df_clean</span>
+
+<span class="c1"># Summary statistics</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">========== OIS Data Summary ==========&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shape of dataset: </span><span class="si">{</span><span class="n">ois_df</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> (rows, columns)&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing values after cleaning: </span><span class="si">{</span><span class="n">ois_df</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">describe</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:52,794 - INFO - Missing values before cleaning: 19
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:52,798 - INFO - Converting OIS_3M from percentage to decimal format
+</pre></div>
+</div>
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>OIS_3M</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>2010-01-01</th>
+      <td>0.00162</td>
+    </tr>
+    <tr>
+      <th>2010-01-04</th>
+      <td>0.00162</td>
+    </tr>
+    <tr>
+      <th>2010-01-05</th>
+      <td>0.00155</td>
+    </tr>
+    <tr>
+      <th>2010-01-06</th>
+      <td>0.00146</td>
+    </tr>
+    <tr>
+      <th>2010-01-07</th>
+      <td>0.00145</td>
+    </tr>
+  </tbody>
+</table>
+</div></div><div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:52,809 - INFO - Dropped 19 rows with missing values
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>========== OIS Data Summary ==========
+Shape of dataset: (3894, 1) (rows, columns)
+Missing values after cleaning: 0
+</pre></div>
+</div>
+<div class="output text_html"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>OIS_3M</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>count</th>
+      <td>3894.000000</td>
+    </tr>
+    <tr>
+      <th>mean</th>
+      <td>0.012734</td>
+    </tr>
+    <tr>
+      <th>std</th>
+      <td>0.017346</td>
+    </tr>
+    <tr>
+      <th>min</th>
+      <td>0.000430</td>
+    </tr>
+    <tr>
+      <th>25%</th>
+      <td>0.001070</td>
+    </tr>
+    <tr>
+      <th>50%</th>
+      <td>0.002130</td>
+    </tr>
+    <tr>
+      <th>75%</th>
+      <td>0.018882</td>
+    </tr>
+    <tr>
+      <th>max</th>
+      <td>0.054432</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></div>
+</div>
+</section>
+<section id="data-visualization">
+<h2>Data Visualization<a class="headerlink" href="#data-visualization" title="Link to this heading">#</a></h2>
+<p>Let’s visualize the 3-month OIS rate over time to understand its behavior:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Ensure the index is a datetime for proper time series visualization</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">):</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Converting index to datetime&quot;</span><span class="p">)</span>
+    <span class="n">ois_df</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+<span class="c1"># Plot the 3-month OIS rate over time</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">ois_df</span><span class="p">[</span><span class="s1">&#39;OIS_3M&#39;</span><span class="p">],</span> <span class="s1">&#39;b-&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;3-Month OIS Rate (Decimal Format)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Date&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Rate&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+
+<span class="c1"># Calculate and display statistics</span>
+<span class="n">mean_rate</span> <span class="o">=</span> <span class="n">ois_df</span><span class="p">[</span><span class="s1">&#39;OIS_3M&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+<span class="n">std_rate</span> <span class="o">=</span> <span class="n">ois_df</span><span class="p">[</span><span class="s1">&#39;OIS_3M&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+<span class="n">min_rate</span> <span class="o">=</span> <span class="n">ois_df</span><span class="p">[</span><span class="s1">&#39;OIS_3M&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+<span class="n">max_rate</span> <span class="o">=</span> <span class="n">ois_df</span><span class="p">[</span><span class="s1">&#39;OIS_3M&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">y</span><span class="o">=</span><span class="n">mean_rate</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;Mean: </span><span class="si">{</span><span class="n">mean_rate</span><span class="si">:</span><span class="s1">.4f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">OUTPUT_DIR</span> <span class="o">/</span> <span class="s1">&#39;ois_3m_rate_time_series.png&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="c1"># Display summary statistics</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">3-Month OIS Rate Summary Statistics:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mean: </span><span class="si">{</span><span class="n">mean_rate</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Standard Deviation: </span><span class="si">{</span><span class="n">std_rate</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Minimum: </span><span class="si">{</span><span class="n">min_rate</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Maximum: </span><span class="si">{</span><span class="n">max_rate</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of observations: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ois_df</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../_images/014c49bc2c686b9aa7ad22a7d3b16123bcadaf44eb65cfd715464db8f8053a12.png" src="../_images/014c49bc2c686b9aa7ad22a7d3b16123bcadaf44eb65cfd715464db8f8053a12.png" />
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>3-Month OIS Rate Summary Statistics:
+Mean: 0.012734
+Standard Deviation: 0.017346
+Minimum: 0.000430
+Maximum: 0.054432
+Number of observations: 3894
+</pre></div>
+</div>
+</div>
+</div>
+</section>
+<section id="rolling-statistics-analysis">
+<h2>Rolling Statistics Analysis<a class="headerlink" href="#rolling-statistics-analysis" title="Link to this heading">#</a></h2>
+<p>Let’s examine the volatility and trends in the OIS rate over different time windows:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Calculate 30-day and 90-day rolling means and standard deviations</span>
+<span class="n">rolling_mean_30d</span> <span class="o">=</span> <span class="n">ois_df</span><span class="p">[</span><span class="s1">&#39;OIS_3M&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+<span class="n">rolling_std_30d</span> <span class="o">=</span> <span class="n">ois_df</span><span class="p">[</span><span class="s1">&#39;OIS_3M&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+<span class="n">rolling_mean_90d</span> <span class="o">=</span> <span class="n">ois_df</span><span class="p">[</span><span class="s1">&#39;OIS_3M&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+<span class="n">rolling_std_90d</span> <span class="o">=</span> <span class="n">ois_df</span><span class="p">[</span><span class="s1">&#39;OIS_3M&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+
+<span class="c1"># Plot rolling statistics</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Plot rolling means</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">ois_df</span><span class="p">[</span><span class="s1">&#39;OIS_3M&#39;</span><span class="p">],</span> <span class="s1">&#39;b-&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;OIS 3M Rate&#39;</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">rolling_mean_30d</span><span class="p">,</span> <span class="s1">&#39;r-&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;30-day Rolling Mean&#39;</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">rolling_mean_90d</span><span class="p">,</span> <span class="s1">&#39;g-&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;90-day Rolling Mean&#39;</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;OIS 3M Rate with Rolling Means&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Rate&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+<span class="c1"># Plot rolling standard deviations</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">rolling_std_30d</span><span class="p">,</span> <span class="s1">&#39;r-&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;30-day Rolling Volatility&#39;</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">rolling_std_90d</span><span class="p">,</span> <span class="s1">&#39;g-&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;90-day Rolling Volatility&#39;</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;OIS 3M Rate Volatility&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Date&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Standard Deviation&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">OUTPUT_DIR</span> <span class="o">/</span> <span class="s1">&#39;ois_3m_rolling_statistics.png&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="c1"># Log the results</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Generated rolling statistics and visualizations for the OIS 3M rate&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../_images/5117d50fc2bdca1f3e04548dc7fb9f596662ddc094e0a3b7f5d8dba9ceafcb85.png" src="../_images/5117d50fc2bdca1f3e04548dc7fb9f596662ddc094e0a3b7f5d8dba9ceafcb85.png" />
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,159 - INFO - Generated rolling statistics and visualizations for the OIS 3M rate
+</pre></div>
+</div>
+</div>
+</div>
+<p>We can visually see that OIS rate has a time varying mean and time varying volatility component. Periods of rate volatility often correspond to wider arbitrage spreads as market participants face uncertainty about funding costs. Thus, visualing the patterns in OIS rates are essential is understanding spreads.</p>
+<p><strong>Post-Financial Crisis Period (2010-2015)</strong>:</p>
+<p>Low and stable OIS rates (near zero) reflecting the Federal Reserve’s accommodative monetary policy following the 2008-2009 financial crisis. Limited volatility as the Fed maintained its zero interest rate policy (ZIRP)</p>
+<p><strong>Gradual Normalization (2016-2019)</strong>:</p>
+<p>Steady increase in OIS rates as the Federal Reserve implemented its policy normalization program. December 2015 marked the first rate hike after nearly a decade at zero. Reduced balance sheet and rising federal funds rate target led to a gradual upward trend in OIS rates</p>
+<p><strong>COVID-19 Pandemic Shock (2020)</strong>:</p>
+<p>Sharp spike in volatility in March 2020 corresponding to the global COVID-19 market panic. Dramatic rate cuts by the Federal Reserve returning to near-zero rates. Implementation of extensive quantitative easing and emergency liquidity facilities. This period shows the highest short-term volatility in our dataset</p>
+<p><strong>Inflation Surge and Monetary Tightening (2022-2023)</strong>:</p>
+<p>Pronounced upward trend in OIS rates beginning in early 2022. Reflects the Federal Reserve’s aggressive rate hiking cycle in response to persistent inflation.OIS rates reached their highest levels in over a decade</p>
+<p><strong>Increasing volatility in rates, but falling levels (2024-2025)</strong>:
+The Federal Open Market Committee (FOMC) cut the range by 50 basis points to 4.75 to 5.00 percent in mid-September and by another 25 basis points to 4.50 to 4.75 percent in early November. As expected, yields on short-term Treasury bills fell in kind, with the 3-month yield dropping from 4.87 percent on September 16 to 4.54 percent. <a class="reference external" href="https://www.crfb.org/blogs/fed-cuts-rates-treasury-yields-are-rising">CRFB</a></p>
+<p>The election day volatility surge could reflect a belief that the election outcome will lead to stronger economic growth, more inflation, additional debt, or some combination of the three. Though</p>
+</section>
+<section id="unit-tests-for-ois-data-processing">
+<h2>Unit Tests for OIS Data Processing<a class="headerlink" href="#unit-tests-for-ois-data-processing" title="Link to this heading">#</a></h2>
+<p>Here we perform some sanity checking of the data processing steps performed here, which will be critical prior to the calculation of spreads.</p>
+<p>Each unit test in our OIS data processing pipeline serves a specific purpose to ensure data quality and compatibility with downstream analysis. Below is the rationale behind each test:</p>
+<section id="test-1-check-for-non-empty-dataframe">
+<h3>Test 1: Check for Non-Empty DataFrame<a class="headerlink" href="#test-1-check-for-non-empty-dataframe" title="Link to this heading">#</a></h3>
+<p><strong>Rationale:</strong> An empty DataFrame would cause all subsequent calculations to fail. This basic check ensures we have data to work with before proceeding.</p>
+</section>
+<section id="test-2-verify-ois-3m-column-exists">
+<h3>Test 2: Verify OIS_3M Column Exists<a class="headerlink" href="#test-2-verify-ois-3m-column-exists" title="Link to this heading">#</a></h3>
+<p><strong>Rationale:</strong> The entire analysis depends on the 3-month OIS rate. If this column is missing or incorrectly named, all downstream calculations would fail or produce meaningless results.</p>
+</section>
+<section id="test-3-confirm-decimal-format-conversion">
+<h3>Test 3: Confirm Decimal Format Conversion<a class="headerlink" href="#test-3-confirm-decimal-format-conversion" title="Link to this heading">#</a></h3>
+<p><strong>Rationale:</strong> The downstream forward rate calculations require OIS rates in decimal format (e.g., 0.0325 rather than 3.25%). Using percentage values would amplify the implied forward rates by 100x, creating dramatically incorrect arbitrage spreads.</p>
+</section>
+<section id="test-4-ensure-no-missing-values">
+<h3>Test 4: Ensure No Missing Values<a class="headerlink" href="#test-4-ensure-no-missing-values" title="Link to this heading">#</a></h3>
+<p><strong>Rationale:</strong> Missing OIS values would create gaps in our arbitrage spread calculations. We enforce a clean dataset here to prevent unexplained NaN values later in the analysis pipeline.</p>
+</section>
+<section id="test-5-validate-reasonable-rate-range">
+<h3>Test 5: Validate Reasonable Rate Range<a class="headerlink" href="#test-5-validate-reasonable-rate-range" title="Link to this heading">#</a></h3>
+<p><strong>Rationale:</strong> OIS rates should be positive (&gt;=0) and realistically below 50% (&lt;0.5 in decimal). Values outside this range likely indicate data errors that would distort our arbitrage analysis.</p>
+</section>
+<section id="test-6-verify-datetimeindex">
+<h3>Test 6: Verify DatetimeIndex<a class="headerlink" href="#test-6-verify-datetimeindex" title="Link to this heading">#</a></h3>
+<p><strong>Rationale:</strong> The as-of merge in the forward rate calculation requires a DatetimeIndex. This merge operation finds the latest OIS rate available on or before each futures observation date, making proper datetime indexing essential.</p>
+</section>
+<section id="test-7-check-data-continuity-for-merging-consistency-10-day-threshold">
+<h3>Test 7: Check Data Continuity for merging consistency (10-day threshold)<a class="headerlink" href="#test-7-check-data-continuity-for-merging-consistency-10-day-threshold" title="Link to this heading">#</a></h3>
+<p><strong>Rationale:</strong> The as-of merge requires reasonable continuity in OIS data. We use a 10-day threshold because:</p>
+<ol class="arabic simple">
+<li><p>Trading days typically occur 5 days per week</p></li>
+<li><p>A 10-day gap represents approximately two weeks of calendar time</p></li>
+<li><p>Longer gaps would mean using significantly outdated OIS rates in the merge</p></li>
+<li><p>The downstream equity arbitrage calculation uses OIS as a benchmark risk-free rate, which becomes unreliable if too stale</p></li>
+<li><p>Since we’re using a backward-looking merge, large gaps in OIS data could mean many futures data points would match to the same outdated OIS rate.</p></li>
+</ol>
+</section>
+<section id="test-8-confirm-sorted-index">
+<h3>Test 8: Confirm Sorted Index<a class="headerlink" href="#test-8-confirm-sorted-index" title="Link to this heading">#</a></h3>
+<p><strong>Rationale:</strong> The <code class="docutils literal notranslate"><span class="pre">pd.merge_asof()</span></code> function specifically requires sorted time series data. If the index isn’t monotonically increasing, the as-of merge will fail or produce incorrect matches.</p>
+</section>
+<section id="test-9-verify-date-range-coverage">
+<h3>Test 9: Verify Date Range Coverage<a class="headerlink" href="#test-9-verify-date-range-coverage" title="Link to this heading">#</a></h3>
+<p><strong>Rationale:</strong> We target at least 70% coverage of the specified date range because:</p>
+<ol class="arabic simple">
+<li><p>Insufficient coverage could bias our arbitrage spread analysis toward certain time periods</p></li>
+<li><p>Most financial analyses require reasonable coverage across market cycles</p></li>
+<li><p>The coverage ratio accounts for weekends and holidays (when markets are closed)</p></li>
+<li><p>Significant gaps could lead to seasonal biases in our arbitrage spread analysis</p></li>
+</ol>
+</section>
+<section id="test-10-validate-csv-output-format">
+<h3>Test 10: Validate CSV Output Format<a class="headerlink" href="#test-10-validate-csv-output-format" title="Link to this heading">#</a></h3>
+<p><strong>Rationale:</strong> The forward rate calculation script explicitly loads “cleaned_ois_rates.csv” and expects:</p>
+<ol class="arabic simple">
+<li><p>A date column (either as ‘Date’ or as an index in ‘Unnamed: 0’)</p></li>
+<li><p>An ‘OIS_3M’ column with the decimal-formatted rates</p></li>
+</ol>
+<p>This test verifies that our output file meets these requirements, ensuring seamless integration with downstream processes.</p>
+</section>
+<section id="as-of-merge-in-downstream-process">
+<h3>As-Of Merge in Downstream Process<a class="headerlink" href="#as-of-merge-in-downstream-process" title="Link to this heading">#</a></h3>
+<p>The downstream script (<code class="docutils literal notranslate"><span class="pre">implied_forward_rate.py</span></code>) uses the as-of merge to pair OIS rates with futures data. A “backward” search selects the last row in the right DataFrame whose ‘on’ key is less than or equal to the left’s key. This means we effectively try to prevent data leakage by trying to use OIS rates on or prior to the other data date. Despite this we believe that most of the dates will be consistent:</p>
+<p>merged_df = pd.merge_asof(
+fut_df, ois_df, on=“Date”, direction=“backward”
+)</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">process_ois_data</span><span class="p">(</span><span class="n">filepath</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Extracts, cleans, and formats only the 3-month OIS rate from Bloomberg historical dataset.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        filepath (Path): Path to the parquet file containing multi-index Bloomberg data.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        pd.DataFrame: Cleaned OIS dataset containing only the 3-month OIS rate.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If the required OIS column is missing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading OIS data from </span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">ois_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error reading parquet file: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">raise</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Column levels: </span><span class="si">{</span><span class="n">ois_df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">names</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Ensure required OIS column is present</span>
+    <span class="n">required_col</span> <span class="o">=</span> <span class="n">OIS_TENORS</span><span class="p">[</span><span class="s2">&quot;OIS_3M&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">required_col</span><span class="p">,</span> <span class="s2">&quot;PX_LAST&quot;</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ois_df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing required OIS column: </span><span class="si">{</span><span class="n">required_col</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Select only the required 3-month OIS rate column</span>
+    <span class="n">ois_df</span> <span class="o">=</span> <span class="n">ois_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="p">[(</span><span class="n">required_col</span><span class="p">,</span> <span class="s2">&quot;PX_LAST&quot;</span><span class="p">)]]</span>
+    <span class="n">ois_df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;OIS_3M&quot;</span><span class="p">]</span>  <span class="c1"># Rename to a clean column name</span>
+
+    <span class="c1"># Convert OIS rates from percentage to decimal format (if applicable)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Converting OIS_3M from percentage to decimal format&quot;</span><span class="p">)</span>
+    <span class="n">ois_df</span><span class="p">[</span><span class="s2">&quot;OIS_3M&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ois_df</span><span class="p">[</span><span class="s2">&quot;OIS_3M&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">100</span>
+
+    <span class="c1"># Drop rows with missing values</span>
+    <span class="n">ois_df</span> <span class="o">=</span> <span class="n">ois_df</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;OIS_3M&quot;</span><span class="p">])</span>
+
+
+    <span class="c1"># Log dataset summary</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">========== OIS Data Summary ==========&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shape of dataset: </span><span class="si">{</span><span class="n">ois_df</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> (rows, columns)&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing values per column:</span><span class="se">\n</span><span class="si">{</span><span class="n">ois_df</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Descriptive statistics:</span><span class="se">\n</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ois_df</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span><span class="o">.</span><span class="n">to_string</span><span class="p">())</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;First 5 rows of cleaned OIS data:</span><span class="se">\n</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ois_df</span><span class="o">.</span><span class="n">head</span><span class="p">()</span><span class="o">.</span><span class="n">to_string</span><span class="p">())</span>
+
+    <span class="k">return</span> <span class="n">ois_df</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_ois_data_processing</span><span class="p">(</span><span class="n">ois_df</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run unit tests for the OIS data processing function.&quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Running unit tests for OIS data processing...&quot;</span><span class="p">)</span>
+    <span class="n">tests_passed</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">tests_failed</span> <span class="o">=</span> <span class="mi">0</span>
+    
+    <span class="c1"># Test 1: Check that dataframe is not empty</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="n">ois_df</span><span class="o">.</span><span class="n">empty</span><span class="p">,</span> <span class="s2">&quot;OIS dataframe should not be empty&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Test 1 Passed: OIS dataframe is not empty&quot;</span><span class="p">)</span>
+        <span class="n">tests_passed</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">except</span> <span class="ne">AssertionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test 1 Failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">tests_failed</span> <span class="o">+=</span> <span class="mi">1</span>
+    
+    <span class="c1"># Test 2: Check that OIS_3M column exists</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="s2">&quot;OIS_3M&quot;</span> <span class="ow">in</span> <span class="n">ois_df</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="s2">&quot;OIS_3M column should exist in the dataframe&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Test 2 Passed: OIS_3M column exists&quot;</span><span class="p">)</span>
+        <span class="n">tests_passed</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">except</span> <span class="ne">AssertionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test 2 Failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">tests_failed</span> <span class="o">+=</span> <span class="mi">1</span>
+    
+    <span class="k">if</span> <span class="s2">&quot;OIS_3M&quot;</span> <span class="ow">in</span> <span class="n">ois_df</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">ois_df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="c1"># Test 3: Check that OIS rates are converted to decimal format</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">ois_df</span><span class="p">[</span><span class="s1">&#39;OIS_3M&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">),</span> <span class="s2">&quot;OIS rates should be in decimal format (not percentage)&quot;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Test 3 Passed: OIS rates are in decimal format&quot;</span><span class="p">)</span>
+            <span class="n">tests_passed</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">except</span> <span class="ne">AssertionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test 3 Failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">tests_failed</span> <span class="o">+=</span> <span class="mi">1</span>
+        
+        <span class="c1"># Test 4: Check that there are no missing values</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">ois_df</span><span class="p">[</span><span class="s1">&#39;OIS_3M&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;There should be no missing values in the cleaned data&quot;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Test 4 Passed: No missing values in cleaned data&quot;</span><span class="p">)</span>
+            <span class="n">tests_passed</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">except</span> <span class="ne">AssertionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test 4 Failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">tests_failed</span> <span class="o">+=</span> <span class="mi">1</span>
+        
+        <span class="c1"># Test 5: Check that the OIS rates are within a reasonable range for interest rates</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">ois_df</span><span class="p">[</span><span class="s1">&#39;OIS_3M&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">),</span> <span class="s2">&quot;OIS rates should not be negative&quot;</span>
+            <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">ois_df</span><span class="p">[</span><span class="s1">&#39;OIS_3M&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.5</span><span class="p">),</span> <span class="s2">&quot;OIS rates should be less than 50% (0.5 in decimal)&quot;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Test 5 Passed: OIS rates are within reasonable bounds&quot;</span><span class="p">)</span>
+            <span class="n">tests_passed</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">except</span> <span class="ne">AssertionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test 5 Failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">tests_failed</span> <span class="o">+=</span> <span class="mi">1</span>
+    
+    <span class="c1"># Test 6: Check that the index is a DatetimeIndex for proper as-of merging</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">),</span> <span class="s2">&quot;Index should be a DatetimeIndex&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Test 6 Passed: Index is a DatetimeIndex&quot;</span><span class="p">)</span>
+        <span class="n">tests_passed</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">except</span> <span class="ne">AssertionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test 6 Failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">tests_failed</span> <span class="o">+=</span> <span class="mi">1</span>
+    
+    <span class="c1"># Only continue datetime-specific tests if index is proper</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">):</span>
+        <span class="c1"># Test 7: Check for data continuity (important for as-of merging)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Check if there are no large gaps in the data</span>
+            <span class="n">date_diffs</span> <span class="o">=</span> <span class="n">ois_df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_series</span><span class="p">()</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">days</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+            
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">date_diffs</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="n">max_gap</span> <span class="o">=</span> <span class="n">date_diffs</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+                <span class="n">gap_days_threshold</span> <span class="o">=</span> <span class="mi">10</span>  <span class="c1"># Adjust as needed</span>
+                <span class="k">assert</span> <span class="n">max_gap</span> <span class="o">&lt;=</span> <span class="n">gap_days_threshold</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Max gap in OIS data is </span><span class="si">{</span><span class="n">max_gap</span><span class="si">}</span><span class="s2"> days, should be ≤ </span><span class="si">{</span><span class="n">gap_days_threshold</span><span class="si">}</span><span class="s2"> days&quot;</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test 7 Passed: Maximum gap in OIS data is </span><span class="si">{</span><span class="n">max_gap</span><span class="si">}</span><span class="s2"> days&quot;</span><span class="p">)</span>
+                <span class="n">tests_passed</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Test 7 Skipped: Insufficient data to check for gaps&quot;</span><span class="p">)</span>
+                <span class="n">tests_passed</span> <span class="o">+=</span> <span class="mf">0.5</span>  <span class="c1"># Partial credit</span>
+        <span class="k">except</span> <span class="ne">AssertionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test 7 Failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">tests_failed</span> <span class="o">+=</span> <span class="mi">1</span>
+        
+        <span class="c1"># Test 8: Check for sorted index (required for as-of merging)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">ois_df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">is_monotonic_increasing</span><span class="p">,</span> <span class="s2">&quot;Index must be sorted in ascending order&quot;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Test 8 Passed: Index is properly sorted&quot;</span><span class="p">)</span>
+            <span class="n">tests_passed</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">except</span> <span class="ne">AssertionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test 8 Failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">tests_failed</span> <span class="o">+=</span> <span class="mi">1</span>
+        
+        <span class="c1"># Test 9: Check if index covers required date range</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">start_date</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">START_DATE</span><span class="p">)</span>
+            <span class="n">end_date</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">END_DATE</span><span class="p">)</span>
+            
+            <span class="n">data_start</span> <span class="o">=</span> <span class="n">ois_df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+            <span class="n">data_end</span> <span class="o">=</span> <span class="n">ois_df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+            
+            <span class="n">coverage_ratio</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ois_df</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">end_date</span> <span class="o">-</span> <span class="n">start_date</span><span class="p">)</span><span class="o">.</span><span class="n">days</span>
+            <span class="k">assert</span> <span class="n">coverage_ratio</span> <span class="o">&gt;=</span> <span class="mf">0.7</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Date coverage ratio is </span><span class="si">{</span><span class="n">coverage_ratio</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, should be ≥ 0.7&quot;</span>
+            
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test 9 Passed: Data covers from </span><span class="si">{</span><span class="n">data_start</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">data_end</span><span class="si">}</span><span class="s2"> with </span><span class="si">{</span><span class="n">coverage_ratio</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> coverage ratio&quot;</span><span class="p">)</span>
+            <span class="n">tests_passed</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">ImportError</span><span class="p">,</span> <span class="ne">AssertionError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test 9 Failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">tests_failed</span> <span class="o">+=</span> <span class="mi">1</span>
+    
+    <span class="c1"># Test 10: Verify CSV output is correctly formatted</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">output_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">PROCESSED_DIR</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;cleaned_ois_rates.csv&quot;</span>
+        <span class="k">assert</span> <span class="n">output_path</span><span class="o">.</span><span class="n">exists</span><span class="p">(),</span> <span class="s2">&quot;Output CSV file must exist&quot;</span>
+        <span class="n">test_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">output_path</span><span class="p">)</span>
+        
+        <span class="c1"># Check that date column exists (either as &#39;Date&#39; or index)</span>
+        <span class="n">date_col_exists</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span><span class="n">col</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;Date&quot;</span><span class="p">,</span> <span class="s2">&quot;Unnamed: 0&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">test_df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">date_col_exists</span><span class="p">,</span> <span class="s2">&quot;CSV must have a date column for merging&quot;</span>
+        
+        <span class="c1"># Check that OIS column exists</span>
+        <span class="k">assert</span> <span class="s2">&quot;OIS_3M&quot;</span> <span class="ow">in</span> <span class="n">test_df</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="s2">&quot;CSV must have OIS_3M column&quot;</span>
+        
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Test 10 Passed: CSV output is correctly formatted&quot;</span><span class="p">)</span>
+        <span class="n">tests_passed</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">AssertionError</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test 10 Failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">tests_failed</span> <span class="o">+=</span> <span class="mi">1</span>
+    
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unit tests complete: </span><span class="si">{</span><span class="n">tests_passed</span><span class="si">}</span><span class="s2"> passed, </span><span class="si">{</span><span class="n">tests_failed</span><span class="si">}</span><span class="s2"> failed&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tests_passed</span><span class="p">,</span> <span class="n">tests_failed</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">ois_df</span> <span class="o">=</span> <span class="n">process_ois_data</span><span class="p">(</span><span class="n">INPUT_FILE</span><span class="p">)</span>
+    <span class="n">tests_passed</span><span class="p">,</span> <span class="n">tests_failed</span> <span class="o">=</span> <span class="n">test_ois_data_processing</span><span class="p">(</span><span class="n">ois_df</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in processing or testing OIS data: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">raise</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,214 - INFO - Loading OIS data from C:\Users\Andik\OneDrive\Desktop\Chicago\Full_stack_QF\Equity_Spot_futures_arb\data_manual\bloomberg_historical_data.parquet
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,231 - INFO - Column levels: [None, None]
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,238 - INFO - Converting OIS_3M from percentage to decimal format
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,242 - INFO - 
+========== OIS Data Summary ==========
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,243 - INFO - Shape of dataset: (3894, 1) (rows, columns)
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,246 - INFO - Missing values per column:
+OIS_3M    0
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,254 - INFO - Descriptive statistics:
+            OIS_3M
+count  3894.000000
+mean      0.012734
+std       0.017346
+min       0.000430
+25%       0.001070
+50%       0.002130
+75%       0.018882
+max       0.054432
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,256 - INFO - First 5 rows of cleaned OIS data:
+             OIS_3M
+2010-01-01  0.00162
+2010-01-04  0.00162
+2010-01-05  0.00155
+2010-01-06  0.00146
+2010-01-07  0.00145
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,260 - INFO - Running unit tests for OIS data processing...
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,261 - INFO - Test 1 Passed: OIS dataframe is not empty
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,265 - INFO - Test 2 Passed: OIS_3M column exists
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,267 - INFO - Test 3 Passed: OIS rates are in decimal format
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,269 - INFO - Test 4 Passed: No missing values in cleaned data
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,274 - INFO - Test 5 Passed: OIS rates are within reasonable bounds
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,276 - INFO - Test 6 Passed: Index is a DatetimeIndex
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,283 - INFO - Test 7 Passed: Maximum gap in OIS data is 4.0 days
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,286 - INFO - Test 8 Passed: Index is properly sorted
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,289 - INFO - Test 9 Passed: Data covers from 2010-01-01 00:00:00 to 2024-12-31 00:00:00 with 0.71 coverage ratio
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,301 - INFO - Test 10 Passed: CSV output is correctly formatted
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2025-03-11 04:09:55,302 - INFO - Unit tests complete: 10 passed, 0 failed
+</pre></div>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="saving-summary-table-for-latex-document">
+<h2>Saving summary table for latex document<a class="headerlink" href="#saving-summary-table-for-latex-document" title="Link to this heading">#</a></h2>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Load processed OIS data</span>
+<span class="n">ois_file</span> <span class="o">=</span> <span class="n">PROCESSED_DIR</span> <span class="o">/</span> <span class="s2">&quot;cleaned_ois_rates.csv&quot;</span>
+<span class="n">ois_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">ois_file</span><span class="p">)</span>
+
+<span class="c1"># Ensure date column is properly formatted</span>
+<span class="k">if</span> <span class="s2">&quot;Date&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ois_df</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="s2">&quot;Unnamed: 0&quot;</span> <span class="ow">in</span> <span class="n">ois_df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+    <span class="n">ois_df</span> <span class="o">=</span> <span class="n">ois_df</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Unnamed: 0&quot;</span><span class="p">:</span> <span class="s2">&quot;Date&quot;</span><span class="p">})</span>
+<span class="n">ois_df</span><span class="p">[</span><span class="s2">&quot;Date&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">ois_df</span><span class="p">[</span><span class="s2">&quot;Date&quot;</span><span class="p">])</span>
+<span class="n">ois_df</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;Date&quot;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Convert decimal rates back to percentage for better readability in the table</span>
+<span class="n">ois_df</span><span class="p">[</span><span class="s2">&quot;OIS_3M_pct&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ois_df</span><span class="p">[</span><span class="s2">&quot;OIS_3M&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">100</span>
+
+<span class="c1"># Define monetary policy regimes</span>
+<span class="n">regime_conditions</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span><span class="s2">&quot;2016-01-01&quot;</span><span class="p">)),</span>
+    <span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span><span class="s2">&quot;2016-01-01&quot;</span><span class="p">))</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span><span class="s2">&quot;2020-01-01&quot;</span><span class="p">)),</span>
+    <span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span><span class="s2">&quot;2020-01-01&quot;</span><span class="p">))</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span><span class="s2">&quot;2021-01-01&quot;</span><span class="p">)),</span>
+    <span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span><span class="s2">&quot;2021-01-01&quot;</span><span class="p">))</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span><span class="s2">&quot;2024-01-01&quot;</span><span class="p">)),</span>
+    <span class="p">(</span><span class="n">ois_df</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span><span class="s2">&quot;2024-01-01&quot;</span><span class="p">))</span>
+<span class="p">]</span>
+
+<span class="n">regime_names</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;ZIRP (2010-2015)&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Normalization (2016-2019)&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;COVID-19 Shock (2020)&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Inflation Surge (2021-2023)&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Stabilization (2024)&quot;</span>
+<span class="p">]</span>
+
+<span class="n">ois_df</span><span class="p">[</span><span class="s2">&quot;Regime&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">regime_conditions</span><span class="p">,</span> <span class="n">regime_names</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;Unknown&quot;</span><span class="p">)</span>
+
+<span class="c1"># Calculate statistics by regime</span>
+<span class="n">stats_by_regime</span> <span class="o">=</span> <span class="n">ois_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;Regime&quot;</span><span class="p">)[</span><span class="s2">&quot;OIS_3M_pct&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span>
+    <span class="p">[</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="s2">&quot;std&quot;</span><span class="p">,</span> <span class="s2">&quot;min&quot;</span><span class="p">,</span> <span class="s2">&quot;max&quot;</span><span class="p">]</span>
+<span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+<span class="c1"># Add full sample statistics</span>
+<span class="n">full_sample_stats</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+    <span class="s2">&quot;Regime&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Full Sample&quot;</span><span class="p">],</span>
+    <span class="s2">&quot;mean&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">ois_df</span><span class="p">[</span><span class="s2">&quot;OIS_3M_pct&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()],</span>
+    <span class="s2">&quot;std&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">ois_df</span><span class="p">[</span><span class="s2">&quot;OIS_3M_pct&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">std</span><span class="p">()],</span>
+    <span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">ois_df</span><span class="p">[</span><span class="s2">&quot;OIS_3M_pct&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()],</span>
+    <span class="s2">&quot;max&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">ois_df</span><span class="p">[</span><span class="s2">&quot;OIS_3M_pct&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()]</span>
+<span class="p">})</span>
+
+<span class="n">stats_by_regime</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">stats_by_regime</span><span class="p">,</span> <span class="n">full_sample_stats</span><span class="p">])</span>
+
+<span class="c1"># Create the LaTeX table manually rather than using pandas to_latex</span>
+<span class="n">latex_table</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">\begin</span><span class="si">{table}</span><span class="s2">[H]</span>
+<span class="s2">\centering</span>
+<span class="s2">\caption{Summary Statistics for 3-Month OIS Rate by Monetary Policy Regime. This table presents key statistical properties of the OIS rate across different monetary policy periods. The stark contrasts in mean levels and volatility across regimes highlight how funding conditions for arbitrageurs have varied dramatically over time. The low volatility during ZIRP (2010-2015) created stable funding conditions, while the high volatility during the COVID-19 shock and subsequent inflation surge created uncertainty that likely widened arbitrage spreads.}</span>
+<span class="s2">\label{tab:ois_stats}</span>
+<span class="s2">\begin</span><span class="si">{tabular}{lrrrr}</span>
+<span class="s2">\toprule</span>
+<span class="s2">\textbf</span><span class="si">{Period}</span><span class="s2"> &amp; \textbf{Mean (\%)} &amp; \textbf{Std Dev (\%)} &amp; \textbf{Min (\%)} &amp; \textbf{Max (\%)} \\</span>
+<span class="s2">\midrule</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="c1"># Add table rows</span>
+<span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">stats_by_regime</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+    <span class="n">regime</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;Regime&#39;</span><span class="p">]</span>
+    <span class="c1"># Bold the Full Sample row</span>
+    <span class="k">if</span> <span class="n">regime</span> <span class="o">==</span> <span class="s2">&quot;Full Sample&quot;</span><span class="p">:</span>
+        <span class="n">regime</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;\textbf{Full Sample}&quot;</span>
+        
+    <span class="n">latex_table</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">regime</span><span class="si">}</span><span class="s2"> &amp; </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;mean&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> &amp; </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;std&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> &amp; </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> &amp; </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> </span><span class="se">\\\\\n</span><span class="s2">&quot;</span>
+
+<span class="c1"># Add the table footer</span>
+<span class="n">latex_table</span> <span class="o">+=</span> <span class="sa">r</span><span class="s2">&quot;\bottomrule&quot;</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+<span class="n">latex_table</span> <span class="o">+=</span> <span class="sa">r</span><span class="s2">&quot;\end</span><span class="si">{tabular}</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+<span class="n">latex_table</span> <span class="o">+=</span> <span class="sa">r</span><span class="s2">&quot;\end</span><span class="si">{table}</span><span class="s2">&quot;</span>
+
+<span class="c1"># Save the LaTeX table</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">OUTPUT_DIR</span> <span class="o">/</span> <span class="s2">&quot;ois_summary_statistics.tex&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">latex_table</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;OIS summary statistics table saved to </span><span class="si">{</span><span class="n">OUTPUT_DIR</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="s1">&#39;ois_summary_statistics.tex&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>OIS summary statistics table saved to C:\Users\Andik\OneDrive\Desktop\Chicago\Full_stack_QF\Equity_Spot_futures_arb\_output\ois_summary_statistics.tex
+</pre></div>
+</div>
+</div>
+</div>
+</section>
+<section id="integration-with-equity-spot-futures-arbitrage-analysis">
+<h2>Integration with Equity Spot-Futures Arbitrage Analysis<a class="headerlink" href="#integration-with-equity-spot-futures-arbitrage-analysis" title="Link to this heading">#</a></h2>
+<p>Our processed OIS data (stored in <code class="docutils literal notranslate"><span class="pre">cleaned_ois_rates.csv</span></code>) serves as a critical input for the next step in our equity spot-futures arbitrage analysis. Here’s how our OIS data processing connects to the broader project:</p>
+<section id="how-ois-data-will-be-used">
+<h3>How OIS Data Will Be Used<a class="headerlink" href="#how-ois-data-will-be-used" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Input for Forward Rate Calculations</strong>:</p>
+<ul class="simple">
+<li><p>The subsequent script (<code class="docutils literal notranslate"><span class="pre">implied_forward_rate.py</span></code>) will load our cleaned OIS rates and merge them with futures data</p></li>
+<li><p>The OIS rate serves as the benchmark risk-free rate in all calculations</p></li>
+</ul>
+</li>
+<li><p><strong>Calculating Arbitrage Spreads</strong>:</p>
+<ul class="simple">
+<li><p>The OIS rate will be used to compound dividends</p></li>
+<li><p>It will help calculate the theoretical OIS-implied forward rate</p></li>
+<li><p>The equity spot-futures arbitrage spread (ESF) will be calculated as the difference between:</p>
+<ul>
+<li><p>The futures-implied forward rate (derived from futures prices and dividend data)</p></li>
+<li><p>The OIS-implied forward rate (derived from our processed OIS data)</p></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>Multi-Index Analysis</strong>:</p>
+<ul class="simple">
+<li><p>This process will be repeated for three major indices: S&amp;P 500 (SPX), Nasdaq 100 (NDX), and Dow Jones (INDU)</p></li>
+<li><p>The spreads will be analyzed across these indices to identify market inefficiencies</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="expected-outputs">
+<h3>Expected Outputs<a class="headerlink" href="#expected-outputs" title="Link to this heading">#</a></h3>
+<p>Once our OIS data is integrated with the futures data, we’ll generate:</p>
+<ol class="arabic simple">
+<li><p>Forward rate calculations for each index</p></li>
+<li><p>Filtered arbitrage spread series (with outliers removed)</p></li>
+<li><p>Visualizations comparing spreads across indices</p></li>
+<li><p>Analysis of spread behavior under different market conditions</p></li>
+</ol>
+<p>By properly processing the OIS data now, we ensure accurate measurement of funding cost differentials in the next phase of our equity spot-futures arbitrage project.</p>
+</section>
+</section>
+</section>
+
+<div class="section ablog__blog_comments">
+   
+</div>
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../index.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">HW5: SPX Hedging with Options</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="02_Futures_Data_Processing.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Futures Data Processing Walkthrough</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#project-context-equity-spot-futures-arbitrage">Project Context: Equity Spot-Futures Arbitrage</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#loading-libraries-and-directories-setup">Loading libraries and directories setup</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#data-inspection-and-extraction">Data Inspection and Extraction</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#data-cleaning-and-transformation">Data Cleaning and Transformation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#data-visualization">Data Visualization</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#rolling-statistics-analysis">Rolling Statistics Analysis</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#unit-tests-for-ois-data-processing">Unit Tests for OIS Data Processing</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#test-1-check-for-non-empty-dataframe">Test 1: Check for Non-Empty DataFrame</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#test-2-verify-ois-3m-column-exists">Test 2: Verify OIS_3M Column Exists</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#test-3-confirm-decimal-format-conversion">Test 3: Confirm Decimal Format Conversion</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#test-4-ensure-no-missing-values">Test 4: Ensure No Missing Values</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#test-5-validate-reasonable-rate-range">Test 5: Validate Reasonable Rate Range</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#test-6-verify-datetimeindex">Test 6: Verify DatetimeIndex</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#test-7-check-data-continuity-for-merging-consistency-10-day-threshold">Test 7: Check Data Continuity for merging consistency (10-day threshold)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#test-8-confirm-sorted-index">Test 8: Confirm Sorted Index</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#test-9-verify-date-range-coverage">Test 9: Verify Date Range Coverage</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#test-10-validate-csv-output-format">Test 10: Validate CSV Output Format</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#as-of-merge-in-downstream-process">As-Of Merge in Downstream Process</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#saving-summary-table-for-latex-document">Saving summary table for latex document</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integration-with-equity-spot-futures-arbitrage-analysis">Integration with Equity Spot-Futures Arbitrage Analysis</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-ois-data-will-be-used">How OIS Data Will Be Used</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#expected-outputs">Expected Outputs</a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By Andy Andikko & Harrison Zhang
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2025, Andy Andikko &amp; Harrison Zhang.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=dfe6caa3a7d634c4db9b"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

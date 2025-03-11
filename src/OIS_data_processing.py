@@ -1,6 +1,30 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""
+OIS Rate Data Processing Script
 
+This script processes Overnight Indexed Swap (OIS) rate data extracted from Bloomberg.
+It focuses on the **3-month OIS rate** as a benchmark risk-free rate, as used in the 
+equity spot-futures arbitrage analysis.
+
+The script performs the following tasks:
+1. **Data Extraction**: Reads OIS data from a multi-index Parquet file.
+2. **Data Cleaning**: Selects only the 3-month OIS rate, renames columns, and converts percentages to decimals.
+3. **Missing Value Handling**: Drops rows with missing OIS rates.
+4. **Data Export**: Saves the cleaned dataset as a CSV file in the processed directory.
+5. **Logging**: Outputs dataset summary and logs all operations for reproducibility.
+
+---
+### **Requirements**
+- The script relies on the **Bloomberg Parquet file** (`bloomberg_historical_data.parquet`).
+- Requires `pandas`, `numpy`, `logging`, and `sys.path` for configuration handling.
+- Environment variables are set in a `.env` file and the directories are set in the `settings.py` configuration file.
+
+---
+## **Author**: Andy Andikko & Harrison Zhang 
+## **Project**: Equity Spot-Futures Arbitrage
+## **Last Updated**: [2025-03-06] 
+"""
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -18,8 +42,7 @@ INPUT_DIR = config("INPUT_DIR")
 PROCESSED_DIR = config("PROCESSED_DIR")
 DATA_MANUAL = config("MANUAL_DATA_DIR")
 
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-log_file = Path(TEMP_DIR) / f'ois_processing_{timestamp}.log'
+log_file = TEMP_DIR / f'ois_processing.log'
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -109,3 +132,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
