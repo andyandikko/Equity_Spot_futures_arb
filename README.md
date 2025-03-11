@@ -1,6 +1,6 @@
 # Equity Spot-Futures Arbitrage Analysis
 
-This repository implements the methodology described in the paper about Equity Spot-Futures Arbitrage to measure potential arbitrage opportunities in equity index futures markets. The analysis computes the spread between the implied funding rates derived from consecutive futures contracts and the risk-free OIS rate, providing insights into market frictions and funding constraints.
+This repository implements the methodology described in the paper about Equity Spot-Futures Arbitrage to measure potential arbitrage opportunities in equity index futures markets. The analysis computes the spread between the implied funding rates derived from consecutive futures contracts and the risk-free OIS rate, providing insights into market frictions and funding constraints. Here is the link to our notebooks webpage [Webpage](https://andyandikko.github.io/Equity_Spot_futures_arb/index.html)
 
 ## Project Overview
 
