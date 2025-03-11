@@ -28,10 +28,28 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y texlive-xetex texlive-fonts-recommended texlive-latex-extra latexmk
-    - name: Set up project environment and run doit and tests
+    - name: Set up project environment and run doit
       run: |
         source .venv/bin/activate
         python ./src/settings.py  # Adjust path if necessary
         doit forget --all  # Force doit to forget all task states
         doit
-        pytest
+        
+    - name: Debug directory structure
+      run: |
+        echo "=== Directory Structure ==="
+        find . -type d | sort
+        
+        echo "=== CSV Files ==="
+        find . -name "*.csv" | sort
+        
+        echo "=== Processed Data Directory ==="
+        ls -la _data/processed/ || echo "Directory doesn't exist"
+        
+        echo "=== Data Directory Structure ==="
+        find _data -type d | sort || echo "Data directory not found"
+        
+    - name: Run tests
+      run: |
+        source .venv/bin/activate
+        pytest -v  # Verbose output to see which tests specifically fail
