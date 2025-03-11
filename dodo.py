@@ -239,7 +239,7 @@ def task_spread_calculations():
 
 
 notebook_tasks = {
-    "01_OIS_Data_Processing": {
+    "01_OIS_Data_Processing.ipynb": {
         "file_dep": ["./src/pull_bloomberg_data.py", "./src/OIS_data_processing.py"],
         "targets": [OUTPUT_DIR / 'ois_3m_rolling_statistics.png',
                     OUTPUT_DIR / 'ois_3m_rate_time_series.png',
