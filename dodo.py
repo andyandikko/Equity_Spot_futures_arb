@@ -132,7 +132,7 @@ def task_config():
     return {
         "actions": ["ipython ./src/settings.py"],  # This action should ensure directories and files are prepared
         "targets": [
-            DATA_DIR, OUTPUT_DIR, TEMP_DIR, INPUT_DIR, PUBLISH_DIR, PROCESSED_DIR
+            DATA_DIR, OUTPUT_DIR, TEMP_DIR, INPUT_DIR,  PROCESSED_DIR
         ] + LOG_FILES,  # Include log files in the targets to manage their existence
         "file_dep": ["./src/settings.py"],
         "clean": True,  # This will clean up all directories and log files when 'doit clean' is executed
@@ -217,14 +217,15 @@ def task_spread_calculations():
     file_dep = [
         "./src/settings.py",
         "./src/pull_bloomberg_data.py",
-        "./src/OIS_data_processing.py",  # If the futures processing depends on OIS data
+        "./src/OIS_data_processing.py",  
         "./src/futures_data_processing.py"
     ]
     targets = [
-        PROCESSED_DIR / "SPX_Forward_spread.csv",
-        PROCESSED_DIR / "NDX_Forward_spread.csv",
-        PROCESSED_DIR / "INDU_Forward_spread.csv",
-        OUTPUT_DIR / "all_indices_spread.png"
+        PROCESSED_DIR / "SPX_Forward_Rates.csv",
+        PROCESSED_DIR / "NDX_Forward_Rates.csv",
+        PROCESSED_DIR / "INDU_Forward_Rates.csv",
+        OUTPUT_DIR / "all_indices_spread_to_2020.png",
+        OUTPUT_DIR / "all_indices_spread_to_present.png"
     ]
 
     return {
@@ -244,20 +245,20 @@ notebook_tasks = {
                     OUTPUT_DIR / 'ois_3m_rate_time_series.png',
                     OUTPUT_DIR / "ois_summary_statistics.tex"],
     },
-    "02_example_with_dependencies.ipynb": {
-        "file_dep": ["./src/pull_fred.py"],
-        "targets": [Path(OUTPUT_DIR) / "GDP_graph.png"],
+    "02_Futures_Data_Processing.ipynb": {
+        "file_dep": ["./src/pull_bloomberg_data.py", "./src/futures_data_processing.py"],
+        "targets": [OUTPUT_DIR / "es1_contract_roll_pattern.png",
+                    OUTPUT_DIR / "es1_ttm_distribution.png",
+                    OUTPUT_DIR / "futures_prices_by_index.png",],
     },
-    "03_public_repo_summary_charts.ipynb": {
+    "03_Spread_Calculations.ipynb": {
         "file_dep": [
-            "./src/pull_fred.py",
-            "./src/pull_ofr_api_data.py",
-            "./src/pull_public_repo_data.py",
+            "./src/pull_bloomberg_data.py", 
+            "./src/futures_data_processing.py",
+            "./src/OIS_data_processing.py",
+            "./src/Spread_calculations.py"
         ],
-        "targets": [
-            OUTPUT_DIR / "repo_rate_spikes_and_relative_reserves_levels.png",
-            OUTPUT_DIR / "rates_relative_to_midpoint.png",
-        ],
+        "targets": [],
     },
 }
 
@@ -426,35 +427,24 @@ def task_run_notebooks():
 def task_compile_latex_docs():
     """Compile the LaTeX documents to PDFs"""
     file_dep = [
-        "./reports/report_example.tex",
-        "./reports/my_article_header.sty",
-        "./reports/slides_example.tex",
-        "./reports/my_beamer_header.sty",
-        "./reports/my_common_header.sty",
-        "./reports/report_simple_example.tex",
-        "./reports/slides_simple_example.tex",
-        "./src/example_plot.py",
-        "./src/example_table.py",
+        "./reports/report.tex"
     ]
     targets = [
-        "./reports/report_example.pdf",
-        "./reports/slides_example.pdf",
-        "./reports/report_simple_example.pdf",
-        "./reports/slides_simple_example.pdf",
+        "./reports/report.pdf"
     ]
 
     return {
         "actions": [
             # My custom LaTeX templates
-            "latexmk -xelatex -halt-on-error -cd ./reports/report_example.tex",  # Compile
-            "latexmk -xelatex -halt-on-error -c -cd ./reports/report_example.tex",  # Clean
-            "latexmk -xelatex -halt-on-error -cd ./reports/slides_example.tex",  # Compile
-            "latexmk -xelatex -halt-on-error -c -cd ./reports/slides_example.tex",  # Clean
-            # Simple templates based on small adjustments to Overleaf templates
-            "latexmk -xelatex -halt-on-error -cd ./reports/report_simple_example.tex",  # Compile
-            "latexmk -xelatex -halt-on-error -c -cd ./reports/report_simple_example.tex",  # Clean
-            "latexmk -xelatex -halt-on-error -cd ./reports/slides_simple_example.tex",  # Compile
-            "latexmk -xelatex -halt-on-error -c -cd ./reports/slides_simple_example.tex",  # Clean
+            "latexmk -xelatex -halt-on-error -cd ./reports/report.tex",  # Compile
+            "latexmk -xelatex -halt-on-error -c -cd ./reports/report.tex"  # Clean
+            # "latexmk -xelatex -halt-on-error -cd ./reports/slides_example.tex",  # Compile
+            # "latexmk -xelatex -halt-on-error -c -cd ./reports/slides_example.tex",  # Clean
+            # # Simple templates based on small adjustments to Overleaf templates
+            # "latexmk -xelatex -halt-on-error -cd ./reports/report_simple_example.tex",  # Compile
+            # "latexmk -xelatex -halt-on-error -c -cd ./reports/report_simple_example.tex",  # Clean
+            # "latexmk -xelatex -halt-on-error -cd ./reports/slides_simple_example.tex",  # Compile
+            # "latexmk -xelatex -halt-on-error -c -cd ./reports/slides_simple_example.tex",  # Clean
             #
             # Example of compiling and cleaning in another directory. This often fails, so I don't use it
             # f"latexmk -xelatex -halt-on-error -cd -output-directory=../_output/ ./reports/report_example.tex",  # Compile

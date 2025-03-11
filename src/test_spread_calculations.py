@@ -36,8 +36,8 @@ TICKER_TO_COLS = {
 }
 
 # 3) Example thresholds for correlation and RMSE
-CORRELATION_THRESHOLD = 0.95   # Adjust as appropriate for your data
-RMSE_TOLERANCE = 5.0          # Adjust as appropriate for your data
+CORRELATION_THRESHOLD = 0.95   
+RMSE_TOLERANCE = 5.0         
 
 # -----------------------------------------------------------------------------
 

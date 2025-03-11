@@ -51,8 +51,9 @@ d["MANUAL_DATA_DIR"] = if_relative_make_abs(_config('MANUAL_DATA_DIR', default=P
 d["INPUT_DIR"]     = if_relative_make_abs(_config('INPUT_DIR', default=Path('_data/input'), cast=Path))
 d["PROCESSED_DIR"] = if_relative_make_abs(_config('PROCESSED_DIR', default=Path('_data/processed'), cast=Path))
 d["OUTPUT_DIR"]    = if_relative_make_abs(_config('OUTPUT_DIR', default=Path('_output'), cast=Path))
-d["PUBLISH_DIR"]   = if_relative_make_abs(_config('PUBLISH_DIR', default=Path('_output/publish'), cast=Path))
+# d["PUBLISH_DIR"]   = if_relative_make_abs(_config('PUBLISH_DIR', default=Path('_output/publish'), cast=Path))
 d["TEMP_DIR"]      = if_relative_make_abs(_config('TEMP_DIR', default=Path('_output/temp'), cast=Path))
+# d["GRAPHICS_DIR"]     = if_relative_make_abs(_config('GRAPHICS_DIR', default=Path('_output/graphs'), cast=Path))
 
 # Name of Stata Executable
 if d["OS_TYPE"] == "windows":
