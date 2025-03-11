@@ -1,4 +1,4 @@
-# HW5: SPX Hedging with Options
+# Equity Spot Futures Arbitrage
 
 Last updated: {sub-ref}`today` 
 
