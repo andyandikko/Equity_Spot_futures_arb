@@ -1,3 +1,27 @@
+"""
+test_spread_calculations.py
+
+This module contains unit tests for the Spread Calculations script/notebook. 
+Each test ensures that the equity/futures spread data is loaded, processed, and 
+validated according to our data pipeline requirements. These tests verify the 
+correctness, consistency, and completeness of the final spreads prior to downstream 
+analysis (e.g., forward-rate computations, arbitrage checks).
+
+Key Areas Covered by These Tests:
+1. **Data Integrity**: Confirms that the required columns exist, that rows do not 
+   contain unexpected NaNs, and that final DataFrames have the proper shape.
+2. **Calculation Checks**: Verifies numeric transformations (like spread differences,
+   rolling averages, or forward rates) produce sensible results.
+3. **Range & Sanity Checks**: Ensures the spreads fall within expected bounds (e.g., 
+   no negative spreads if not domain-appropriate) and time-series indexes are valid
+   for as-of merges.
+4. **Output Format**: Confirms that the final output (CSV or DataFrame) meets the 
+   format required by subsequent pipeline steps.
+
+By running these tests, we help maintain the accuracy and reliability of our 
+spread data, protecting downstream analyses from subtle but costly data errors.
+"""
+
 import pytest
 import pandas as pd
 import numpy as np
