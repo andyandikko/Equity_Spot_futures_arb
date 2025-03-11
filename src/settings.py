@@ -73,7 +73,7 @@ def create_dirs():
     d["OUTPUT_DIR"].mkdir(parents=True, exist_ok=True)
     d["TEMP_DIR"].mkdir(parents=True, exist_ok=True)
     d["INPUT_DIR"].mkdir(parents=True, exist_ok=True)
-    d["PUBLISH_DIR"].mkdir(parents=True, exist_ok=True)
+    # d["PUBLISH_DIR"].mkdir(parents=True, exist_ok=True)
     d["PROCESSED_DIR"].mkdir(parents=True, exist_ok=True)
 
     # If you'd like to ensure these log files exist (touch them):
