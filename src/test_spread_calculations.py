@@ -19,12 +19,12 @@ else:
     parquet_path = DATA_MANUAL / INPUT_PARQUET_FILE
 
 # File to test with, retrieved from Professor Jeremey's repo
-REAL_DATA_FILE = Path(DATA_MANUAL / "equity_spreads_test_data.csv")
+REAL_DATA_FILE = DATA_MANUAL / "equity_spreads_test_data.csv"
 
 FORWARD_RATE_FILES = {
-    "NDX": Path(PROCESSED_DIR / "NDX_Forward_Rates.csv"),   # Contains columns [Date, spread_NDX]
-    "SPX": Path(PROCESSED_DIR / "SPX_Forward_Rates.csv"),   # Contains columns [Date, spread_SPX]
-    "DOW": Path(PROCESSED_DIR /"INDU_Forward_Rates.csv"),   # Contains columns [Date, spread_INDU]
+    "NDX": Path(PROCESSED_DIR) / "NDX_Forward_Rates.csv",   # Contains columns [Date, spread_NDX]
+    "SPX": Path(PROCESSED_DIR) / "SPX_Forward_Rates.csv",   # Contains columns [Date, spread_SPX]
+    "DOW": Path(PROCESSED_DIR) /"INDU_Forward_Rates.csv",   # Contains columns [Date, spread_INDU]
 }
 
 # 2) Map the ticker to (ForwardRatesColumn, RealDataColumn):
