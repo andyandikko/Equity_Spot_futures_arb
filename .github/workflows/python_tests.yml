@@ -23,21 +23,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-venv-
 
-    - name: Cache LaTeX installation
-      id: cache-latex
-      uses: actions/cache@v3
-      with:
-        path: /usr/share/texlive
-        key: ${{ runner.os }}-latex-${{ hashFiles('**/report.tex') }}
-        restore-keys: |
-          ${{ runner.os }}-latex-
-
-    - name: Install LaTeX dependencies (if not cached)
-      if: steps.cache-latex.outputs.cache-hit != 'true'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y texlive-latex-extra latexmk
-
     - name: Install Python environment
       if: steps.cache-python-env.outputs.cache-hit != 'true'
       run: |
@@ -45,6 +30,11 @@ jobs:
         source .venv/bin/activate
         pip install --upgrade pip
         pip install -r requirements.txt
+
+    - name: Install Full TeX Live (for xelatex support)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y texlive-xetex texlive-fonts-recommended texlive-latex-extra latexmk
 
     - name: Set up project environment
       run: |
