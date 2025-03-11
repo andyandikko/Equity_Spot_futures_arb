@@ -41,6 +41,8 @@ The project calculates the "ESF" (Equity Spot-Futures) arbitrage spread by:
 1. Clone this repository
 2. Install required packages:
    ```
+   conda create --name test python=3.12
+   conda activate test
    pip install -r requirements.txt
    ```
 3. Configure your environment in `.env` file (see `.env.example` for required variables)
