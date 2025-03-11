@@ -36,17 +36,9 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y texlive-xetex texlive-fonts-recommended texlive-latex-extra latexmk
 
-    - name: Set up project environment
+    - name: Set up project environment and run doit and tests
       run: |
         source .venv/bin/activate
         python ./src/settings.py  # Adjust path if necessary
-
-    - name: Run doit
-      run: |
-        source .venv/bin/activate
         doit
-
-    - name: Test with pytest
-      run: |
-        source .venv/bin/activate
         pytest
