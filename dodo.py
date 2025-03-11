@@ -240,19 +240,20 @@ def task_spread_calculations():
 
 notebook_tasks = {
     "01_OIS_Data_Processing.ipynb": {
-        "file_dep": ["./src/pull_bloomberg_data.py", "./src/OIS_data_processing.py"],
+        "file_dep": ["./src/settings.py","./src/pull_bloomberg_data.py", "./src/OIS_data_processing.py"],
         "targets": [OUTPUT_DIR / 'ois_3m_rolling_statistics.png',
                     OUTPUT_DIR / 'ois_3m_rate_time_series.png',
                     OUTPUT_DIR / "ois_summary_statistics.tex"],
     },
     "02_Futures_Data_Processing.ipynb": {
-        "file_dep": ["./src/pull_bloomberg_data.py", "./src/futures_data_processing.py"],
+        "file_dep": ["./src/settings.py","./src/pull_bloomberg_data.py", "./src/futures_data_processing.py"],
         "targets": [OUTPUT_DIR / "es1_contract_roll_pattern.png",
                     OUTPUT_DIR / "es1_ttm_distribution.png",
                     OUTPUT_DIR / "futures_prices_by_index.png",],
     },
     "03_Spread_Calculations.ipynb": {
         "file_dep": [
+            "./src/settings.py",
             "./src/pull_bloomberg_data.py", 
             "./src/futures_data_processing.py",
             "./src/OIS_data_processing.py",
@@ -302,6 +303,11 @@ def task_run_notebooks():
                     OUTPUT_DIR / f"{notebook_name}.ipynb",
                     mkdir=True,
                 ),
+                copy_file(
+                    Path("./src") / f"{notebook_name}.ipynb",
+                    Path("./_docs/notebooks/") / f"{notebook_name}.ipynb",
+                    mkdir=True,
+                ),
                 jupyter_clear_output(notebook_name),
                 # jupyter_to_python(notebook_name, build_dir),
                 """python -c "import sys; from datetime import datetime; print(f'End """ + notebook + """: {datetime.now()}', file=sys.stderr)" """,
@@ -317,7 +323,6 @@ def task_run_notebooks():
             ],
             "clean": True,
         }
-
 
 
 # ###############################################################
@@ -390,7 +395,6 @@ def task_compile_sphinx_docs():
     file_dep = [
         "./docs_src/conf.py",
         "./docs_src/index.md",
-        "./docs_src/myst_markdown_demos.md",
         *notebook_scripts,
     ]
 

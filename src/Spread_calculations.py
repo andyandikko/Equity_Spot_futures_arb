@@ -319,60 +319,57 @@ def process_index_forward_rates(index_code: str) -> pd.DataFrame:
 
 def plot_all_indices(results: dict, keep_dates: bool = True):
     """
-    Generate a single chart for each index's final spread_{idx} in basis points.
-    By default (keep_dates=True), we reindex to the union of all dates to keep the
-    X-axis from skipping days that are missing in some index.
-    
-    If you want to only show existing dates in each index's data, set keep_dates=False.
-    """
-    plt.figure(figsize=(12, 7))
+    Generate two plots:
+    1) From START_DATE to 01/01/2020
+    2) From START_DATE to END_DATE
 
-    # If keep_dates: 
-    #   1) find the union of all dates across all DataFrames
-    #   2) reindex each df to that union, so that the x-axis is the same for all
-    if keep_dates:
-        all_dates = set()
+    If keep_dates=True, reindex all series to the union of dates in results.
+    """
+    START_DATE = pd.to_datetime(config("START_DATE"))
+    END_DATE = pd.to_datetime(config("END_DATE"))
+    MID_DATE = pd.to_datetime("2020-01-01")
+
+    def _plot(date_range, filename_suffix):
+        plt.figure(figsize=(12, 7))
+
+        date_index = None
+        if keep_dates:
+            all_dates = set()
+            for df in results.values():
+                if df is not None and not df.empty:
+                    all_dates.update(df.index)
+            date_index = pd.to_datetime(sorted(all_dates))
+
+        colors = {"SPX": "blue", "NDX": "green", "INDU": "red"}
+
         for idx, df in results.items():
             if df is not None and not df.empty:
-                all_dates.update(df.index.tolist())
-        # Build a sorted list
-        date_index = pd.to_datetime(sorted(all_dates))
-    else:
-        date_index = None
+                spread_col = f"spread_{idx}"
+                df_plot = df.reindex(date_index).ffill() if keep_dates and date_index is not None else df
+                df_plot = df_plot.loc[(df_plot.index >= START_DATE) & (df_plot.index <= date_range)]
+                
+                plt.plot(df_plot.index, df_plot[spread_col], color=colors.get(idx, "black"), alpha=0.8, label=f"{idx} Spread (bps)")
 
-    colors = {"SPX": "blue", "NDX": "green", "INDU": "red"}
+        plt.axhline(0, color="k", linestyle="--", alpha=0.7)
+        plt.title(f"Implied Forward Spread Across Indices (bps)\n[{START_DATE.date()} to {date_range.date()}]")
+        plt.xlabel("Date")
+        plt.ylabel("Spread (bps)")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        ax = plt.gca()
+        ax.xaxis.set_major_locator(mdates.YearLocator())
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
 
-    for idx, df in results.items():
-        if df is not None and not df.empty:
-            spread_col = f"spread_{idx}"
-            # reindex if desired
-            if keep_dates and date_index is not None:
-                df_plot = df.reindex(date_index).ffill()  # Forward fill missing values
-            else:
-                df_plot = df
-            plt.plot(
-                df_plot.index,
-                df_plot[spread_col],
-                color=colors.get(idx, "black"),
-                alpha=0.8,
-                label=f"{idx} Spread (bps)"
-            )
+        out_png = Path(OUTPUT_DIR) / f"all_indices_spread_{filename_suffix}.png"
+        plt.savefig(out_png, dpi=300)
+        logger.info(f"Saved plot to {out_png}")
+        plt.close()
 
-    plt.axhline(0, color="k", linestyle="--", alpha=0.7)
-    plt.title("Implied Forward Spread Across Indices (bps)")
-    plt.xlabel("Date")
-    plt.ylabel("Spread (bps)")  # we multiplied by 100 above => bps
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
+    # Generate two plots with different date ranges
+    _plot(MID_DATE, "to_2020")
+    _plot(END_DATE, "to_present")
 
-    ax = plt.gca()
-    ax.xaxis.set_major_locator(mdates.YearLocator())
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
-
-    out_png = Path(OUTPUT_DIR) / "all_indices_spread.png"
-    plt.savefig(out_png, dpi=300)
-    logger.info(f"Saved combined spread plot to {out_png}")
 
 
 
