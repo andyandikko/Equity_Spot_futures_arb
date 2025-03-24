@@ -62,7 +62,7 @@ The project configuration is managed through:
 ## Requirements Met
 
 This project successfully:
-- Replicates the original paper's results within a 5bps RMSE tolerance
+- Replicates the original paper's results within a 5bps RMSE tolerance and 95% correlation
 - Extends analysis through March 2025 with updated market data
 - Provides informative visualizations with comprehensive captions
 - Implements separate data cleaning and analysis processes
